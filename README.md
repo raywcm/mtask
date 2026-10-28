@@ -52,9 +52,9 @@ account after a dropped connection. Tasks do not survive a host reboot.
 | F5, F1/? | Refresh or show help |
 | q / Ctrl+C | Exit the manager without stopping tasks |
 
-Inside a task, **F12** detaches. **Ctrl+B, d** and **Ctrl+B, Ctrl+D** also work;
-for the latter, keep Ctrl held while pressing B then D. The old **Ctrl+], d**
-alias remains available. Standalone **Ctrl+D** and **Ctrl+C** go to the application.
+Inside a task, **F12** or **Ctrl+B, d** returns to the list.
+For compatibility, **Ctrl+B, Ctrl+D** (hold Ctrl while pressing B then D) and
+**Ctrl+], d** also work. Standalone **Ctrl+D** and **Ctrl+C** go to the application.
 On Mac keyboards, F12 may require Fn. Use `mtask attach --no-escape TASK` to send
 all keys, including F12, to the application.
 

@@ -234,7 +234,7 @@ def test_attach(h):
     os.write(fd, b'first\n')
     assert b'ECHO:first' in drain(fd)
     pid2, fd2 = h.spawn_tty('attach', task)
-    busy = drain(fd2)
+    busy = wait_output(fd2, b'busy')
     assert b'busy' in busy and b'\x1b]2;MTasK' not in busy, busy
     assert h.join(pid2) == 1
     os.write(fd, b'\x02d')

@@ -287,7 +287,7 @@ func (m model) helpView(width int) []string {
 	for _, binding := range bindings {
 		lines = append(lines, p.accent.Render(binding[0])+"  "+binding[1])
 	}
-	lines = append(lines, "", t("detach_hint"), p.muted.Render(t("legacy_detach_hint")), p.muted.Render(t("literal_prefix_hint")), t("help_close_hint"))
+	lines = append(lines, "", t("detach_hint"), p.muted.Render(t("literal_prefix_hint")), t("help_close_hint"))
 	return lines
 }
 

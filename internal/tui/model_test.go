@@ -321,10 +321,13 @@ func TestKeyboardHelpAndTabNavigation(t *testing.T) {
 			t.Fatal("missing help page")
 		}
 		view := ansi.Strip(m.View().Content)
-		for _, text := range []string{"Ctrl+B", "Ctrl+]", "F2", "F5", "Delete", "Keyboard shortcuts"} {
+		for _, text := range []string{"F12", "Ctrl+B", "F2", "F5", "Delete", "Keyboard shortcuts"} {
 			if !strings.Contains(view, text) {
 				t.Fatalf("help missing %q", text)
 			}
+		}
+		if strings.Contains(view, "Ctrl+D") || strings.Contains(view, "Ctrl+]") {
+			t.Fatal("compatibility shortcuts should stay in the documentation")
 		}
 		m, _ = press(m, tea.KeyEscape)
 		if m.mode != "" {

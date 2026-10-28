@@ -18,8 +18,9 @@ Tasks accept names, full IDs or unique ID prefixes of at least four characters.
 
 - **F12**: detach; Mac keyboards may require Fn+F12.
 - **Ctrl+B, d**: release Ctrl before pressing d.
-- **Ctrl+B, Ctrl+D**: keep Ctrl held and press B then D.
-- **Ctrl+], d**: legacy alias.
+
+Compatibility shortcuts are documented here rather than in the interface:
+**Ctrl+B, Ctrl+D** (keep Ctrl held while pressing B then D) and **Ctrl+], d**.
 
 From the manager, detach returns to the list. A direct `mtask attach` returns to
 the shell. The task keeps running. Standalone Ctrl+D and Ctrl+C retain the
