@@ -50,7 +50,7 @@ def latest_size(h,ref):
     return tuple(map(int,values[-1])) if values else None
 
 
-def records(h):return json.loads(h.cli('list','--json').stdout)
+def records(h):return json.loads(h.cli('ls','--json').stdout)
 def identity(h,ref):
     r=h.show(ref)['runtime'];return tuple(r[k] for k in ['instance_id','broker_pid','child_pid'])
 
@@ -95,51 +95,51 @@ def test_monitor(h,frontend):
         text=wait_view(fd,terminal,lambda text:'STATIC-alpha' in text and 'counter:' in text)
         screen_row=next(row for row in terminal.display if 'STATIC-alpha' in row)
         assert screen_row.index('STATIC-alpha')>screen_row.index('│'),text
-        until(lambda:latest_size(h,alpha)==(17,54)) # 80x24: content 76, list 19, gap 3.
+        until(lambda:latest_size(h,alpha)==(17,37)) # 80x24: content 76, list 36, gap 3.
         os.write(fd,b'\x1b[D\x1b[Chl') # Horizontal keys must not leave/reopen monitor.
         first=re.search(r'counter:(\d+)',text).group(1)
         wait_view(fd,terminal,lambda text:bool((m:=re.search(r'counter:(\d+)',text)) and m.group(1)!=first))
         os.write(fd,b'z')
         time.sleep(.15)
-        assert b'INPUT:z' not in h.cli('logs',alpha,'--raw').stdout,'monitor forwarded keyboard input'
+        until(lambda:b'INPUT:z' in h.cli('logs',alpha,'--raw').stdout)
         resize(pid,fd,terminal,30,120)
-        wait_view(fd,terminal,lambda text:'SIZE:23,85' in text)
-        assert latest_size(h,alpha)==(23,85)
-        os.write(fd,b'\x1b[B')
+        wait_view(fd,terminal,lambda text:'SIZE:23,57' in text)
+        assert latest_size(h,alpha)==(23,57)
+        os.write(fd,b'\x02\x1b[B')
         wait_view(fd,terminal,lambda text:'Unable to monitor' in text and 'in use by another terminal' in text)
-        until(lambda:latest_size(h,alpha)==(23,85))
+        until(lambda:latest_size(h,alpha)==(23,57))
         frame(owner,9);kind,_=receive(owner)
         while kind!=10:kind,_=receive(owner)
         assert h.show(beta)['health']=='online'
         owner.close()
         os.write(fd,b'\x1b[15~')
         wait_view(fd,terminal,lambda text:'STATIC-beta' in text and 'Unable to monitor' not in text)
-        os.write(fd,b'v')
+        os.write(fd,b'\x1b[24~')
         wait_view(fd,terminal,lambda text:'Memory' in text and 'STATIC-beta' not in text)
-        until(lambda:latest_size(h,beta)==(23,85))
+        until(lambda:latest_size(h,beta)==(23,57))
         os.write(fd,b'v')
         wait_view(fd,terminal,lambda text:'STATIC-beta' in text)
-        # Enter releases the monitor lease first and opens the ordinary terminal.
-        os.write(fd,b'\r')
+        # Ctrl+Enter opens the ordinary terminal after releasing the lease.
+        os.write(fd,b'\x1b[13;5u')
         wait_view(fd,terminal,lambda text:'STATIC-beta' in text and 'alpha' not in text)
         os.write(fd,b'K')
         wait_view(fd,terminal,lambda text:'INPUT:K' in text)
         os.write(fd,b'\x02d')
         wait_view(fd,terminal,lambda text:'alpha' in text and 'STATIC-beta' in text)
-        os.write(fd,b'v')
+        os.write(fd,b'\x1b[24~')
         wait_view(fd,terminal,lambda text:'Memory' in text and 'STATIC-beta' not in text)
         # Returning to monitor sets the pane size and leaves it in place on exit.
-        until(lambda:latest_size(h,beta)==(23,85))
+        until(lambda:latest_size(h,beta)==(23,57))
         offset=len(h.cli('logs',beta,'--raw').stdout)
         for _ in range(3):
             os.write(fd,b'v');wait_view(fd,terminal,lambda text:'STATIC-beta' in text)
             resize(pid,fd,terminal,30,120) # Same window size must be a no-op.
-            os.write(fd,b'v');wait_view(fd,terminal,lambda text:'Memory' in text and 'STATIC-beta' not in text)
+            os.write(fd,b'\x1b[24~');wait_view(fd,terminal,lambda text:'Memory' in text and 'STATIC-beta' not in text)
         updates=re.findall(rb'SIZE:(\d+),(\d+)',h.cli('logs',beta,'--raw').stdout[offset:])
-        assert all(tuple(map(int,size))==(23,85) for size in updates),updates
+        assert all(tuple(map(int,size))==(23,57) for size in updates),updates
         os.write(fd,b'q');drain(fd);assert h.join(pid)==0
         for ref in [alpha,beta]:assert identity(h,ref)==before[ref]
-        print('PASS v split monitor/static cells/live refresh, no keyboard input, pane resize, switch/size retention, occupied-session failure/retry, Enter attach/detach returns to monitor, stable task PIDs',flush=True)
+        print('PASS v split monitor/static cells/live refresh, direct keyboard input, pane resize, switch/size retention, occupied-session failure/retry, Ctrl+Enter attach/detach returns to monitor, stable task PIDs',flush=True)
     finally:owner.close()
 
 
@@ -185,7 +185,7 @@ def test_dialogs_and_names(h):
     modal(terminal,'Name already exists','work-4-2',fd=fd)
     assert len(records(h))==count+1,'race silently created an unreviewed alternative'
     os.write(fd,b'y')
-    wait_view(fd,terminal,lambda text:not terminal.alternate and 'work-4-2' in text and 'Name already exists' not in text)
+    wait_view(fd,terminal,lambda text:'Control' in text and 'work-4-2' in text and 'Name already exists' not in text)
     created=next(r for r in records(h) if r['spec']['name']=='work-4-2')
     os.write(fd,b'\x02d');wait_view(fd,terminal,lambda text:terminal.alternate and 'Memory' in text)
     # Stop and delete are actual centered modals, preserving the list behind.
@@ -212,28 +212,29 @@ def test_languages(h):
     h.create('work',sys.executable,'-c',FIXTURE,'work')
     source=h.create('source',sys.executable,'-c',FIXTURE,'source')
     before=identity(h,source)
-    for code,readonly,stop,conflict in [
-        ('en','Read only','Confirm stop','Name already exists'),
-        ('zh-CN','只读','确认停止','会话名称已存在'),
-        ('ja','閲覧のみ','停止の確認','名前が既に存在します'),
-        ('es','Solo lectura','Confirmar detención','El nombre ya existe'),
-        ('fr','Lecture seule','Confirmer l’arrêt','Ce nom existe déjà'),
+    for code,control,stop,conflict in [
+        ('en','Control','Confirm stop','Name already exists'),
+        ('zh-CN','可控制','确认停止','会话名称已存在'),
+        ('ja','操作中','停止の確認','名前が既に存在します'),
+        ('es','Control','Confirmar detención','El nombre ya existe'),
+        ('fr','Contrôle','Confirmer l’arrêt','Ce nom existe déjà'),
     ]:
         h.cli('settings','set','language',code)
         pid,fd=h.spawn_tty();terminal=Terminal()
         wait_view(fd,terminal,lambda text:'source' in text and 'work' in text)
         os.write(fd,b'\x1b[Bv')
-        wait_view(fd,terminal,lambda text:'STATIC-source' in text and readonly in text)
+        wait_view(fd,terminal,lambda text:'STATIC-source' in text and control in text)
+        os.write(fd,b'\x1b[24~')
+        wait_view(fd,terminal,lambda text:'STATIC-source' not in text)
         os.write(fd,b's');wait_view(fd,terminal,lambda text:stop in text)
         modal(terminal,stop,'source',fd=fd);os.write(fd,b'\x1b')
-        wait_view(fd,terminal,lambda text:stop not in text and 'STATIC-source' in text)
+        wait_view(fd,terminal,lambda text:stop not in text and 'STATIC-source' not in text)
         os.write(fd,b'\x1bOQ');drain(fd,.1)
         os.write(fd,b'\x01\x0bwork\r')
         wait_view(fd,terminal,lambda text:conflict in text and 'work-2' in text)
         modal(terminal,conflict,'work-2',fd=fd)
         os.write(fd,b'\x1b');drain(fd,.1)
-        os.write(fd,b'\x1b');wait_view(fd,terminal,lambda text:conflict not in text and 'STATIC-source' in text)
-        os.write(fd,b'v');drain(fd,.1)
+        os.write(fd,b'\x1b');wait_view(fd,terminal,lambda text:conflict not in text and 'STATIC-source' not in text)
         os.write(fd,b'q');drain(fd);assert h.join(pid)==0
         assert identity(h,source)==before and h.show(source)['spec']['name']=='source'
     print('PASS monitor label, stop and numbered-name modals in five languages, cancellation preserves original task',flush=True)

@@ -6,6 +6,81 @@ import (
 	"testing"
 )
 
+func TestEmbeddedCommandPreservesSwitchTypeaheadAcrossEverySplit(t *testing.T) {
+	input := []byte("before\x02\x1b[Bafter中文")
+	for split := 0; split <= len(input); split++ {
+		commands := 0
+		d := EscapeDecoder{PrefixCommand: func(raw []byte) bool {
+			if string(raw) != "\x1b[B" {
+				return false
+			}
+			commands++
+			return true
+		}}
+		var output, remaining []byte
+		for _, part := range [][]byte{input[:split], input[split:]} {
+			if commands > 0 {
+				remaining = append(remaining, part...)
+				continue
+			}
+			data, handled := d.Feed(part)
+			output = append(output, data...)
+			if handled {
+				remaining = append(remaining, d.Remaining...)
+			}
+		}
+		if commands != 1 || string(output) != "before" || string(remaining) != "after中文" {
+			t.Fatalf("split %d: commands=%d old=%q new=%q", split, commands, output, remaining)
+		}
+	}
+}
+
+func TestEmbeddedCommandsIgnorePasteAndUnknownPrefixes(t *testing.T) {
+	d := EscapeDecoder{PrefixCommand: func(raw []byte) bool {
+		return string(raw) == "\x1b[B"
+	}}
+	input := []byte("\x02x\x1b[200~\x02\x1b[B\x1b[24~\x02d\x1b[201~")
+	var output []byte
+	for _, b := range input {
+		data, handled := d.Feed([]byte{b})
+		if handled {
+			t.Fatal("paste or unknown command intercepted")
+		}
+		output = append(output, data...)
+	}
+	if !bytes.Equal(output, input) {
+		t.Fatalf("literal input changed: %q", output)
+	}
+}
+
+func TestCtrlEnterOnlyInterceptedByEmbeddedControl(t *testing.T) {
+	for _, encoding := range []string{"\x1b[13;5u", "\x1b[13;5:1u", "\x1b[27;5;13~", "\x1b[13;69u"} {
+		for split := 0; split <= len(encoding); split++ {
+			d := EscapeDecoder{Command: func(_ []byte, key uint16) bool { return key == KeyCtrlEnter }}
+			first, handled := d.Feed([]byte(encoding[:split]))
+			if !handled {
+				last, done := d.Feed([]byte(encoding[split:]))
+				first, handled = append(first, last...), done
+			}
+			if !handled || len(first) != 0 {
+				t.Fatalf("encoding %q split %d was not handled", encoding, split)
+			}
+		}
+		d := EscapeDecoder{}
+		output, handled := d.Feed([]byte(encoding))
+		if handled || string(output) != encoding {
+			t.Fatal("fullscreen attachment intercepted Ctrl+Enter")
+		}
+	}
+	for _, literal := range []string{"\r", "\n", "\x1b[13;2u", "\x1b[13;5:3u", "\x1b[200~\x1b[13;5u\x1b[201~"} {
+		d := EscapeDecoder{Command: func(_ []byte, key uint16) bool { return key == KeyCtrlEnter }}
+		output, handled := d.Feed([]byte(literal))
+		if handled || string(output) != literal {
+			t.Fatalf("application input intercepted: %q", literal)
+		}
+	}
+}
+
 func TestEscapeAcrossReadBoundaries(t *testing.T) {
 	d := EscapeDecoder{}
 	first, detached := d.Feed([]byte{'a', 0x1d})
@@ -15,6 +90,23 @@ func TestEscapeAcrossReadBoundaries(t *testing.T) {
 	second, detached := d.Feed([]byte{'d', 'x'})
 	if !detached || len(second) != 0 {
 		t.Fatal("detach or discard suffix failed")
+	}
+}
+
+func TestVimEscapeAndDetachCoalescedDuringStartup(t *testing.T) {
+	for _, shortcut := range []string{"\x02d", "\x02\x04", "\x1dd"} {
+		input := []byte("text\x1b" + shortcut + "suffix")
+		for split := 0; split <= len(input); split++ {
+			d := EscapeDecoder{}
+			first, detached := d.Feed(input[:split])
+			if !detached {
+				last, done := d.Feed(input[split:])
+				first, detached = append(first, last...), done
+			}
+			if !detached || string(first) != "text\x1b" {
+				t.Fatalf("shortcut %q split %d: output=%q detached=%v", shortcut, split, first, detached)
+			}
+		}
 	}
 }
 

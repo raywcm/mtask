@@ -22,7 +22,7 @@ def main():
         try:
             with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
                 tasks=list(pool.map(lambda i:h.create('soak-'+str(i),'/bin/sh','-c','while :; do printf "alive\\n"; sleep 1; done'),range(args.tasks)))
-                records=json.loads(h.cli('list','--json').stdout)
+                records=json.loads(h.cli('ls','--json').stdout)
                 pids=','.join(str(r['runtime']['broker_pid']) for r in records)
                 def rss():
                     output=subprocess.check_output(['ps','-o','rss=','-p',pids],text=True)
@@ -31,7 +31,7 @@ def main():
                 deadline=time.monotonic()+args.seconds
                 observations=0
                 while time.monotonic()<deadline:
-                    records=json.loads(h.cli('list','--json').stdout)
+                    records=json.loads(h.cli('ls','--json').stdout)
                     assert len(records)==args.tasks and all(r['health']=='online' for r in records)
                     observations+=1
                     time.sleep(.25)

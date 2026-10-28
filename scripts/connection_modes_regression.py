@@ -141,7 +141,7 @@ def test_cli_and_tui(h):
         # Busy opens connection choices directly. Enter defaults to read only.
         pid,fd=h.spawn_tty();term=Terminal()
         wait_view(fd,term,lambda text:'mode-ui' in text)
-        os.write(fd,b'\r')
+        os.write(fd,b'\x1b[13;5u')
         wait_view(fd,term,lambda text:'Connection modes' in text and 'already has a controller' in text)
         os.write(fd,b'\r');wait_view(fd,term,lambda text:'Read only' in text and 'Connection modes' not in text)
         os.write(fd,b'\x02d');wait_view(fd,term,lambda text:term.alternate and 'mode-ui' in text and 'Memory' in text)
@@ -267,7 +267,7 @@ def main():
             h.cli('settings','set','history-retention','off')
             test_protocol(h)
             # Remove only this suite's completed records to keep UI selection deterministic.
-            for record in json.loads(h.cli('list','--json').stdout):h.cli('delete',record['spec']['id'])
+            for record in json.loads(h.cli('ls','--json').stdout):h.cli('delete',record['spec']['id'])
             test_cli_and_tui(h)
             test_fullscreen(h)
             test_languages(h)

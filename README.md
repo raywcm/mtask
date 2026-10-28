@@ -33,10 +33,10 @@ Add `~/.local/bin` to PATH, or run `./bin/mtask` directly.
 ## Use
 
 ```sh
-mtask new --name work -- bash
+mtask new -s work -- bash
 # Press F12 to detach. The task keeps running.
 mtask
-# Select work and press Enter to reconnect.
+# Select work and press Enter for half-pane control.
 ```
 
 When using SSH, run mtask on the remote host. Reconnect to the same host and
@@ -44,10 +44,12 @@ account after a dropped connection. Tasks do not survive a host reboot.
 
 | In the task list | Action |
 | --- | --- |
-| ↑/↓, Enter | Select and enter a task; stopped tasks open output history |
+| ↑/↓, Enter | Select and control a task in a half pane; stopped tasks open history |
 | Tab / Shift+Tab | Switch Running, Stop and Settings tabs |
 | n, F2, s, Delete | Create, rename, stop or delete; stop/delete require confirmation |
-| v | Monitor the selected running task |
+| v | Open half-pane control |
+| Ctrl+Enter | Open the selected task fullscreen |
+| Ctrl+F | Search all sessions by name, ID, directory or command |
 | c | Choose takeover, read-only or shared control |
 | F5, F1/? | Refresh or show help |
 | q / Ctrl+C | Exit the manager without stopping tasks |
@@ -58,17 +60,27 @@ For compatibility, **Ctrl+B, Ctrl+D** (hold Ctrl while pressing B then D) and
 On Mac keyboards, F12 may require Fn. Use `mtask attach --no-escape TASK` to send
 all keys, including F12, to the application.
 
+New sessions created from the TUI open selected in half-pane control. Type
+directly, including Enter; use **Ctrl+Enter** for fullscreen, **Ctrl+F** to search,
+**Ctrl+B, ↑/↓** to switch tasks, and **F12** to return to the list. List actions
+apply after returning. Your terminal must send a distinct Ctrl+Enter key.
+
 ## CLI
 
 ```sh
-mtask new -d --name build -- make test
-mtask list --json
+mtask new -ds build -- make test
+mtask ls --json
 mtask logs --follow build
 mtask stop build
 mtask delete build
-mtask attach work --read-only     # Or --shared / --takeover
+mtask attach -t work -r     # Or --shared / --takeover
 mtask settings set history-retention off
 ```
+
+Common tmux session commands and flags are supported: `new-session`/`new`,
+`list-sessions`/`ls`, `attach-session`/`attach`/`a`, `rename-session`/`rename`,
+`has-session`/`has`, and `kill-session`. See [usage](docs/usage.md) for the supported
+subset and migration notes.
 
 Stopped records and logs expire after **one hour** by default. Each task retains
 two output files of about 8 MiB. All connections use the same Unix account.

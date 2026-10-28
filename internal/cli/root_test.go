@@ -11,7 +11,7 @@ func TestEmptyJSONCatalog(t *testing.T) {
 	root := NewRoot()
 	var output bytes.Buffer
 	root.SetOut(&output)
-	root.SetArgs([]string{"--state-dir", filepath.Join(t.TempDir(), "state"), "list", "--json"})
+	root.SetArgs([]string{"--state-dir", filepath.Join(t.TempDir(), "state"), "ls", "--json"})
 	if err := root.Execute(); err != nil {
 		t.Fatal(err)
 	}

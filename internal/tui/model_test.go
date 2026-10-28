@@ -126,6 +126,11 @@ func TestTabsKeepIndependentSelectionAndActionsUseFullIDs(t *testing.T) {
 		t.Fatal("lost selection across tab switch")
 	}
 	m, cmd = press(m, tea.KeyEnter)
+	if !m.monitoring || m.monitorID != selected || m.selected.Kind != "" {
+		t.Fatal("Enter did not open the selected monitor")
+	}
+	next, full := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter, Mod: tea.ModCtrl})
+	m, cmd = next.(model), full
 	if cmd == nil || m.selected.ID != selected || m.selected.State.Tab != "running" {
 		t.Fatal("short display ID leaked into actual attach identity")
 	}

@@ -45,6 +45,9 @@ def main():
                         os.write(fd, b'\t\r')
                         wait_view(fd, terminal, lambda text: 'Output history' in text and 'HISTORY' in text)
                     if method == 'ctrl-c':
+                        if page == 'monitor':
+                            os.write(fd, b'\x1b[24~')
+                            wait_view(fd, terminal, lambda text: 'Memory' in text and 'LIVE' not in text)
                         os.write(fd, b'\x03')
                     else:
                         os.kill(pid, getattr(signal, method))

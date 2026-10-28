@@ -23,12 +23,16 @@ For a race-enabled run, build to a fresh path and pass it to
 | screen_regression.py | Reconnect redraw, terminal modes, htop and outer shell preservation |
 | ui_regression.py | Five languages, tabs, settings, metrics and stop confirmation |
 | connection_modes_regression.py | Read-only enforcement, takeover, shared input and size ownership |
+| tmux_cli_regression.py | Session aliases/flags, concurrent reuse, quoting, exit codes and scoped kill |
+| monitor_control_regression.py | Immediate input, typeahead, Unicode/paste, switch routing and Vim editing |
+| search_regression.py | New-session half pane, long lists, search input isolation, history and Ctrl+Enter |
 | monitor_dialog_regression.py | Preview, resize, busy/retry, dialogs and name conflicts |
 | history_view_regression.py | History scrolling, empty output and OSC filtering |
 | history_regression.py | Expiry policies and active-task protection |
-| tui_exit_regression.py | Ctrl+C/INT/TERM/HUP cleanup across five pages |
+| tui_exit_regression.py | Ctrl+C after monitor detach; INT/TERM/HUP cleanup across five pages |
 | detach_keys_regression.py | F12, both Ctrl+B forms, standalone Ctrl+D/Esc, paste and no-escape |
 | stress.py | Concurrent health scans and broker RSS |
+| idle_cpu_regression.py | Idle CPU guard for fullscreen, read-only, list and monitor |
 | installer_test.py | Platform selection, checksums, pinned versions and failed-upgrade protection |
 
 Run a focused suite with `.venv/bin/python scripts/NAME.py ./bin/mtask`.

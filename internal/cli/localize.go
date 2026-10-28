@@ -3,11 +3,11 @@ package cli
 import (
 	"strings"
 
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 	"github.com/raywcm/mtask/internal/config"
 	"github.com/raywcm/mtask/internal/i18n"
 	"github.com/raywcm/mtask/internal/store"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 func configureLocalization(root *cobra.Command, stateDir *string) {

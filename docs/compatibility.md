@@ -44,7 +44,9 @@ startup check, so its visible startup still needs testing.
 - **Monitoring changes the PTY size.** The preview uses its pane size and retains
   that size when leaving. Full attach applies the full terminal size. Occupied
   or unreachable tasks display “Unable to monitor.” The preview is reconstructed
-  from the retained output logs.
+  from retained logs and accepts keyboard input immediately. List shortcuts
+  require returning with F12; Ctrl+B, ↑/↓ switches the monitored task. Native
+  mouse behavior and unsupported terminal extensions require fullscreen attach.
 - **Connection roles are scoped to one Unix account.** Read-only limits that
   connection; the same account can open another management client. Shared inputs
   can interfere. The oldest connected controller determines the PTY size.

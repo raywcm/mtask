@@ -182,7 +182,7 @@ class Harness:
                 time.sleep(.02)
         self.children.clear()
         if not self.state.exists(): return
-        records = json.loads(self.cli('list', '--json').stdout)
+        records = json.loads(self.cli('ls', '--json').stdout)
         for record in records:
             task = record['spec']['id']
             self.cli('stop', task, check=False)
@@ -196,14 +196,14 @@ def test_lifecycle(h):
     assert h.cli('delete', task, check=False).returncode != 0
     h.cli('rename', task, 'renamed')
     assert h.show('renamed')['spec']['id'] == task
-    assert h.cli('new', '-d', '-n', 'renamed', '--', '/bin/sh', check=False).returncode != 0
+    assert h.cli('new', '-d', '-s', 'renamed', '--', '/bin/sh', check=False).returncode != 0
     assert b'ready' in h.cli('logs', task).stdout
     h.cli('stop', task)
     assert h.show(task)['runtime']['exit_code'] == 143
-    assert any(r['spec']['id'] == task for r in json.loads(h.cli('list', '--history', '--json').stdout))
+    assert any(r['spec']['id'] == task for r in json.loads(h.cli('ls', '--history', '--json').stdout))
     h.cli('delete', task)
     assert h.cli('show', task, check=False).returncode != 0
-    canonical=[str(h.binary),'--state-dir',str(h.state.resolve()),'list','--json']
+    canonical=[str(h.binary),'--state-dir',str(h.state.resolve()),'ls','--json']
     assert subprocess.run(canonical,env=ENV,capture_output=True,timeout=5).returncode==0
     print('PASS lifecycle, names, active-delete rejection, history and JSON', flush=True)
 
@@ -350,7 +350,7 @@ def test_jobs_crash_and_concurrency(h):
         list(pool.map(lambda task: h.cli('stop', task), tasks))
     assert all(h.show(task)['health'] == 'finished' for task in tasks)
     # Only one concurrent creator may reserve the same user-visible name.
-    def same(_):return h.cli('new','-d','-n','same-name','--','/bin/sh','-c','sleep 20',check=False).returncode
+    def same(_):return h.cli('new','-d','-s','same-name','--','/bin/sh','-c','sleep 20',check=False).returncode
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
         codes=list(pool.map(same,range(4)))
     assert codes.count(0)==1,codes
@@ -421,7 +421,7 @@ def test_tui(h):
             until(lambda:ui.show('tui-created')['health']=='online')
             os.write(fd,b'printf "TUI-OK\\n"\r')
             assert b'TUI-OK' in drain(fd,.3)
-            os.write(fd,b'\x02d');wait_output(fd,b'MTasK')
+            os.write(fd,b'\x02d');wait_output(fd,b'F12/Ctrl+B,d')
             os.write(fd,b'\x1bOQ');drain(fd)
             os.write(fd,b'\x01\x0btui-renamed\r');drain(fd,.3)
             until(lambda:ui.show('tui-renamed')['health']=='online')
@@ -436,7 +436,7 @@ def test_tui(h):
             os.write(fd,b'\x1b[C');drain(fd,.2)
             os.write(fd,b'\x1b[3~');drain(fd)
             os.write(fd,b'y');drain(fd,.3)
-            until(lambda:json.loads(ui.cli('list','--json').stdout)==[])
+            until(lambda:json.loads(ui.cli('ls','--json').stdout)==[])
             os.write(fd,b'\x1b');drain(fd);assert ui.join(pid)==0
         finally:ui.cleanup()
     print('PASS TUI new/enter/detach, rename, stop confirmation/cancellation, delete confirmation and quit',flush=True)

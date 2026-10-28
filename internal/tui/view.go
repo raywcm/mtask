@@ -127,11 +127,11 @@ func (m model) card(r task.Record, width int, selected bool) string {
 }
 func (m model) helpLine(width int) string {
 	t, p := m.locale().Text, m.palette()
-	enterLabel := t("attach")
+	enterLabel := t("monitor_control")
 	if m.tab == tabStop {
 		enterLabel = t("view_history")
 	}
-	bindings := [][2]string{{"←→", t("tabs_short")}, {"↑↓", t("select")}, {"Enter", enterLabel}, {"n", t("new")}, {"F12/Ctrl+B,d", t("detach_short")}, {"?", t("help")}, {"q", t("quit")}}
+	bindings := [][2]string{{"←→", t("tabs_short")}, {"↑↓", t("select")}, {"Enter", enterLabel}, {"n", t("new")}, {"Ctrl+F", t("search_sessions")}, {"F12/Ctrl+B,d", t("detach_short")}, {"?", t("help")}, {"q", t("quit")}}
 	items := []string{}
 	for _, binding := range bindings {
 		items = append(items, p.accent.Render(binding[0])+" "+p.muted.Render(binding[1]))
@@ -142,7 +142,7 @@ func (m model) helpLine(width int) string {
 	}
 	// Keep the two detach shortcuts visible on narrower terminals. The full
 	// action list remains available through F1/?.
-	for _, compact := range []string{"←→ ↑↓ Enter n F12/Ctrl+B,d ↩ ? q", "F12/Ctrl+B,d ↩ ? q"} {
+	for _, compact := range []string{"←→ ↑↓ Enter n Ctrl+F F12/Ctrl+B,d ↩ ? q", "F12/Ctrl+B,d ↩ ? q"} {
 		if ansi.StringWidth(compact) <= width {
 			return p.muted.Render(compact)
 		}
@@ -252,7 +252,7 @@ func (m model) settingsView(width int) []string {
 func (m model) helpView(width int) []string {
 	t := m.locale().Text
 	p := m.palette()
-	enterAction := t("attach")
+	enterAction := t("monitor_control")
 	if m.tab == tabStop {
 		enterAction = t("view_history")
 	}
@@ -266,6 +266,8 @@ func (m model) helpView(width int) []string {
 		{tabKeys, t("tabs")},
 		{"Enter", enterAction},
 		{"v", t("monitor")},
+		{"Ctrl+F", t("search_sessions")},
+		{"Ctrl+Enter", t("attach")},
 		{"c", t("connection_modes")},
 		{"n", t("new")},
 		{"s", t("stop_action")},
@@ -318,6 +320,8 @@ func (m model) View() tea.View {
 		lines = []string{m.header(width), t("small_window"), "q " + t("quit")}
 	} else if m.mode == "help" {
 		lines = m.helpView(width)
+	} else if m.mode == "search" {
+		lines = m.searchView(width)
 	} else if m.mode == "history" {
 		lines = m.historyView(width)
 	} else if m.mode == "connect" {
@@ -393,5 +397,9 @@ func (m model) View() tea.View {
 	}
 	view := tea.NewView(content)
 	view.AltScreen = true
+	if m.monitoring && m.mode == "" && m.monitorFrame.Ready && m.monitorFrame.Err == nil && !m.monitorFrame.CursorHidden {
+		left, right, height := m.monitorGeometry()
+		view.Cursor = tea.NewCursor(left+5+min(right-1, max(0, m.monitorFrame.CursorX)), 5+min(height-1, max(0, m.monitorFrame.CursorY)))
+	}
 	return view
 }

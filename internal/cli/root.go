@@ -23,7 +23,7 @@ import (
 	"golang.org/x/term"
 )
 
-var Version = "0.4.8-dev"
+var Version = "0.5.0-dev"
 
 type ExitError struct{ Code int }
 
@@ -53,11 +53,11 @@ func NewRoot() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			input, ok := cmd.InOrStdin().(*os.File)
 			if !ok || !term.IsTerminal(int(input.Fd())) {
-				return errors.New("TUI requires a terminal; use mtask list --json")
+				return errors.New("TUI requires a terminal; use mtask ls --json")
 			}
 			output, ok := cmd.OutOrStdout().(*os.File)
 			if !ok || !term.IsTerminal(int(output.Fd())) {
-				return errors.New("TUI requires a terminal; use mtask list --json")
+				return errors.New("TUI requires a terminal; use mtask ls --json")
 			}
 			manager, err := open()
 			if err != nil {
@@ -112,11 +112,7 @@ func NewRoot() *cobra.Command {
 						continue
 					}
 					if r.Runtime != nil {
-						viewState = tui.State{Tab: "running", Selected: r.Spec.ID, Monitor: action.State.Monitor}
-						_, err = attachCreated(cmd.Context(), manager, r, input, output)
-						if err != nil {
-							notice = err
-						}
+						viewState = tui.State{Tab: "running", Selected: r.Spec.ID, Monitor: true}
 					}
 				}
 				if cmd.Context().Err() != nil {
@@ -131,7 +127,7 @@ func NewRoot() *cobra.Command {
 	root.CompletionOptions.DisableDefaultCmd = true
 	root.PersistentFlags().StringVar(&stateDir, "state-dir", "", "absolute state directory (or MTASK_STATE_DIR)")
 	var listJSON, history bool
-	list := &cobra.Command{Use: "list", Aliases: []string{"ls"}, Short: "List tasks and live broker health", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, args []string) error {
+	list := &cobra.Command{Use: "list-sessions", Aliases: []string{"ls"}, Short: "List tasks and live broker health", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, args []string) error {
 		m, err := open()
 		if err != nil {
 			return err
@@ -168,14 +164,19 @@ func NewRoot() *cobra.Command {
 	list.Flags().BoolVar(&history, "history", false, "only completed tasks")
 	root.AddCommand(list)
 	var name, dir string
-	var detached, newJSON bool
-	create := &cobra.Command{Use: "new [flags] -- [command [args...]]", Short: "Start a persistent task (default: your shell)", Args: cobra.ArbitraryArgs, RunE: func(cmd *cobra.Command, args []string) error {
+	var detached, newJSON, reuse bool
+	create := &cobra.Command{Use: "new-session [flags] [command [args...]]", Aliases: []string{"new"}, Short: "Start a persistent task (default: your shell)", Args: cobra.ArbitraryArgs, RunE: func(cmd *cobra.Command, args []string) error {
 		m, err := open()
 		if err != nil {
 			return err
 		}
+		if reuse && name == "" {
+			return errors.New("-A requires -s or --name")
+		}
 		if len(args) == 0 {
 			args = []string{defaultShell()}
+		} else if len(args) == 1 && cmd.ArgsLenAtDash() < 0 {
+			args = []string{defaultShell(), "-c", args[0]}
 		}
 		cwd := dir
 		if cwd == "" {
@@ -194,7 +195,18 @@ func NewRoot() *cobra.Command {
 		}
 		r, err := m.Create(cmd.Context(), name, args, cwd, size, interactive && !detached && !newJSON)
 		if err != nil {
-			return err
+			var collision *service.NameConflictError
+			if !reuse || !errors.As(err, &collision) {
+				return err
+			}
+			r, err = m.Resolve(cmd.Context(), name)
+			if err != nil {
+				return err
+			}
+			r = m.Observe(cmd.Context(), r)
+			if r.Health != "online" || r.Runtime == nil || r.Runtime.State != task.Running {
+				return errors.New("session is not running; use another name or inspect its history")
+			}
 		}
 		if newJSON {
 			return json.NewEncoder(cmd.OutOrStdout()).Encode(m.Observe(cmd.Context(), r))
@@ -212,18 +224,21 @@ func NewRoot() *cobra.Command {
 		}
 		return err
 	}}
-	create.Flags().StringVarP(&name, "name", "n", "", "unique task name")
-	create.Flags().StringVar(&dir, "cwd", "", "working directory")
+	create.Flags().StringVarP(&name, "name", "s", "", "unique task name")
+	create.Flags().StringVarP(&dir, "cwd", "c", "", "working directory")
 	create.Flags().BoolVarP(&detached, "detach", "d", false, "start in background")
 	create.Flags().BoolVar(&newJSON, "json", false, "start in background and print JSON")
+	create.Flags().BoolVarP(&reuse, "attach", "A", false, "attach to the named session if it already exists")
+	create.Flags().SetInterspersed(false)
 	root.AddCommand(create)
 	var noEscape, takeover, readOnly, shared bool
-	attach := &cobra.Command{Use: "attach TASK", Aliases: []string{"a"}, Short: "Enter a task; F12 detaches", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
+	var attachTarget string
+	attach := &cobra.Command{Use: "attach-session [SESSION]", Aliases: []string{"attach", "a"}, Short: "Enter a task; F12 detaches", Args: targetArgs(&attachTarget, 0), RunE: func(cmd *cobra.Command, args []string) error {
 		m, err := open()
 		if err != nil {
 			return err
 		}
-		r, err := m.Resolve(cmd.Context(), args[0])
+		r, err := m.Resolve(cmd.Context(), targetValue(attachTarget, args))
 		if err != nil {
 			return err
 		}
@@ -257,11 +272,12 @@ func NewRoot() *cobra.Command {
 	}}
 	attach.Flags().BoolVar(&noEscape, "no-escape", false, "forward every input byte, including detach keys")
 	attach.Flags().BoolVar(&takeover, "takeover", false, "disconnect existing controllers and take control")
-	attach.Flags().BoolVar(&readOnly, "read-only", false, "watch output without sending input or changing terminal size")
+	attach.Flags().BoolVarP(&readOnly, "read-only", "r", false, "watch output without sending input or changing terminal size")
 	attach.Flags().BoolVar(&shared, "shared", false, "join the session with shared input control")
 	attach.MarkFlagsMutuallyExclusive("takeover", "read-only", "shared")
+	attach.Flags().StringVarP(&attachTarget, "target", "t", "", "target session name or ID")
 	root.AddCommand(attach)
-	show := &cobra.Command{Use: "show TASK", Aliases: []string{"status"}, Short: "Inspect task, process identity, exit status and health", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
+	show := &cobra.Command{Use: "show TASK", Short: "Inspect task, process identity, exit status and health", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
 		m, err := open()
 		if err != nil {
 			return err
@@ -274,7 +290,6 @@ func NewRoot() *cobra.Command {
 		enc.SetIndent("", "  ")
 		return enc.Encode(m.Observe(cmd.Context(), r))
 	}}
-	show.Flags().Bool("json", true, "print JSON")
 	root.AddCommand(show)
 	stop := &cobra.Command{Use: "stop TASK", Short: "Stop the task session and wait for its exit", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
 		m, err := open()
@@ -286,15 +301,17 @@ func NewRoot() *cobra.Command {
 		return m.Stop(ctx, args[0])
 	}}
 	root.AddCommand(stop)
-	rename := &cobra.Command{Use: "rename TASK NAME", Short: "Rename a task", Args: cobra.ExactArgs(2), RunE: func(cmd *cobra.Command, args []string) error {
+	var renameTarget string
+	rename := &cobra.Command{Use: "rename-session [SESSION] NAME", Aliases: []string{"rename"}, Short: "Rename a task", Args: targetArgs(&renameTarget, 1), RunE: func(cmd *cobra.Command, args []string) error {
 		m, err := open()
 		if err != nil {
 			return err
 		}
-		return m.Rename(cmd.Context(), args[0], args[1])
+		return m.Rename(cmd.Context(), targetValue(renameTarget, args), args[len(args)-1])
 	}}
+	rename.Flags().StringVarP(&renameTarget, "target", "t", "", "target session name or ID")
 	root.AddCommand(rename)
-	remove := &cobra.Command{Use: "delete TASK", Aliases: []string{"rm"}, Short: "Delete a stopped task and its history", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
+	remove := &cobra.Command{Use: "delete TASK", Short: "Delete a stopped task and its history", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
 		m, err := open()
 		if err != nil {
 			return err
@@ -302,6 +319,44 @@ func NewRoot() *cobra.Command {
 		return m.Delete(cmd.Context(), args[0])
 	}}
 	root.AddCommand(remove)
+	var hasTarget string
+	has := &cobra.Command{Use: "has-session [SESSION]", Aliases: []string{"has"}, Short: "Check whether a session is running", Args: targetArgs(&hasTarget, 0), RunE: func(cmd *cobra.Command, args []string) error {
+		m, err := openStore()
+		if err != nil {
+			return err
+		}
+		r, err := m.Resolve(cmd.Context(), targetValue(hasTarget, args))
+		if err != nil {
+			return err
+		}
+		r = m.Observe(cmd.Context(), r)
+		if r.Health != "online" || r.Runtime == nil || r.Runtime.State != task.Running {
+			return &ExitError{Code: 1}
+		}
+		return nil
+	}}
+	has.Flags().StringVarP(&hasTarget, "target", "t", "", "target session name or ID")
+	root.AddCommand(has)
+	var killTarget string
+	kill := &cobra.Command{Use: "kill-session [SESSION]", Short: "Stop a session and delete its history", Args: targetArgs(&killTarget, 0), RunE: func(cmd *cobra.Command, args []string) error {
+		m, err := open()
+		if err != nil {
+			return err
+		}
+		r, err := m.Resolve(cmd.Context(), targetValue(killTarget, args))
+		if err != nil {
+			return err
+		}
+		ctx, cancel := context.WithTimeout(cmd.Context(), 5*time.Second)
+		defer cancel()
+		if err := m.Stop(ctx, string(r.Spec.ID)); err != nil {
+			return err
+		}
+		return m.Delete(ctx, string(r.Spec.ID))
+	}}
+	kill.Flags().StringVarP(&killTarget, "target", "t", "", "target session name or ID")
+	root.AddCommand(kill)
+
 	recoverCmd := &cobra.Command{Use: "recover TASK", Short: "Mark a crashed broker's task failed without signalling stale PIDs", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
 		m, err := open()
 		if err != nil {

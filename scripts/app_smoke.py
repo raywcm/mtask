@@ -56,7 +56,7 @@ def main():
                 direct_bytes=direct_startup(path,root)
                 entry={'app':name,'version':version,'direct_startup_bytes':direct_bytes,'tasks':[]}
                 for index in range(2):
-                    created=json.loads(h.cli('new','-d','--json','-n',name+'-'+str(index),'--cwd',root,'--',path).stdout)
+                    created=json.loads(h.cli('new','-d','--json','-s',name+'-'+str(index),'--cwd',root,'--',path).stdout)
                     task=created['spec']['id']
                     until(lambda:len(h.cli('logs',task,'--raw').stdout)>0)
                     before=h.show(task)

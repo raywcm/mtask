@@ -41,7 +41,7 @@ func TestSettingsPersistLocalizeHelpAndPreserveJSON(t *testing.T) {
 	if text := run("--version"); text != "MTasK v"+Version+"\n" {
 		t.Fatalf("version branding: %q", text)
 	}
-	if text := run("list", "--json"); text != "[]\n" {
+	if text := run("ls", "--json"); text != "[]\n" {
 		t.Fatal("localized machine JSON")
 	}
 }
@@ -72,7 +72,7 @@ func TestAdditionalLanguagesPersistAndLocalizeCLI(t *testing.T) {
 		if settings["language"] != code {
 			t.Fatal("language did not persist", code)
 		}
-		if text := run("list", "--json"); text != "[]\n" {
+		if text := run("ls", "--json"); text != "[]\n" {
 			t.Fatal("translated JSON schema", text)
 		}
 	}

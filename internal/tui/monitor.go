@@ -3,6 +3,7 @@ package tui
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -26,7 +27,7 @@ func monitorTickCmd(generation uint64) tea.Cmd {
 }
 func (m model) monitorGeometry() (left, right, height int) {
 	width := max(1, m.width-4)
-	left = min(28, max(16, width/4))
+	left = max(16, (width-3)/2)
 	right = max(1, width-left-3)
 	height = max(1, m.height-7)
 	return
@@ -36,6 +37,12 @@ func (m model) monitorSize() task.Size {
 	return task.Size{Rows: uint16(min(256, max(4, height))), Cols: uint16(min(512, max(20, width)))}
 }
 func (m *model) closeMonitor() {
+	if m.monitorInput != nil {
+		m.monitorInput.Disable()
+	}
+	m.releaseMonitor()
+}
+func (m *model) releaseMonitor() {
 	if m.monitorCancel != nil {
 		m.monitorCancel()
 		m.monitorCancel = nil
@@ -49,7 +56,7 @@ func (m *model) closeMonitor() {
 	m.monitorFrame = monitor.Frame{}
 }
 func (m *model) syncMonitor() tea.Cmd {
-	if !m.monitoring || m.tab != tabRunning {
+	if !m.monitoring || m.tab != tabRunning || m.mode == "search" {
 		return nil
 	}
 	r, ok := m.current()
@@ -60,7 +67,10 @@ func (m *model) syncMonitor() tea.Cmd {
 	if r.Spec.ID == m.monitorID {
 		return nil
 	}
-	m.closeMonitor()
+	if m.monitorInput != nil {
+		m.monitorInput.Begin()
+	}
+	m.releaseMonitor()
 	m.monitorID = r.Spec.ID
 	ctx, cancel := context.WithCancel(m.ctx)
 	m.monitorCancel = cancel
@@ -79,15 +89,23 @@ func (m *model) syncMonitor() tea.Cmd {
 func (m model) monitorView(width int) []string {
 	t, p := m.locale().Text, m.palette()
 	if m.width < 50 || m.height < 12 {
-		return []string{m.header(width), t("monitor"), t("small_window"), t("monitor_hint")}
+		return []string{m.header(width), t("monitor"), t("small_window"), t("monitor_retry_hint")}
 	}
 	left, right, height := m.monitorGeometry()
 	rows := m.rows(tabRunning)
 	title := t("monitor_select")
 	if r, ok := m.current(); ok {
-		title = safe(r.Spec.Name) + " [" + shortID(r.Spec.ID, m.tasks) + "] · " + t("mode_readonly")
+		title = safe(r.Spec.Name) + " [" + shortID(r.Spec.ID, m.tasks) + "]"
+		if m.monitorFrame.Err == nil {
+			title += " · " + t("monitor_control")
+		}
 	}
-	lines := []string{m.header(width), "", m.tabs(width), p.muted.Render(strings.Repeat("─", width)), fit(t("session"), left) + " │ " + ansi.Truncate(p.accent.Bold(true).Render(title), right, "…")}
+	position := 0
+	if len(rows) > 0 {
+		position = m.cursors[0] + 1
+	}
+	label := fmt.Sprintf("%s %d / %d", t("session"), position, len(rows))
+	lines := []string{m.header(width), "", m.tabs(width), p.muted.Render(strings.Repeat("─", width)), fit(label, left) + " │ " + ansi.Truncate(p.accent.Bold(true).Render(title), right, "…")}
 	start := max(0, m.cursors[0]-height+1)
 	preview := m.monitorFrame
 	for y := 0; y < height; y++ {
@@ -125,6 +143,10 @@ func (m model) monitorView(width int) []string {
 		}
 		lines = append(lines, fit(label, left)+" │ "+fit(ansi.Truncate(content, right, ""), right))
 	}
-	lines = append(lines, m.status(width), p.muted.Render(ansi.Truncate(t("monitor_hint"), width, "…")))
+	hint := t("monitor_hint")
+	if preview.Err != nil || len(rows) == 0 {
+		hint = t("monitor_retry_hint")
+	}
+	lines = append(lines, m.status(width), p.muted.Render(ansi.Truncate(hint, width, "…")))
 	return lines
 }

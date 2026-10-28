@@ -1,0 +1,264 @@
+package tui
+
+import (
+	"context"
+	"errors"
+	"os"
+	"sync"
+	"time"
+
+	tea "charm.land/bubbletea/v2"
+	"github.com/raywcm/mtask/internal/monitor"
+	"github.com/raywcm/mtask/internal/terminal"
+)
+
+type monitorAction struct {
+	kind    string
+	session *monitor.Session
+	err     error
+	raw     []byte
+	ready   chan struct{}
+}
+
+// The same cancelable TTY reader serves Bubble Tea and the embedded terminal.
+// Control input is intercepted before key parsing, preserving opaque bytes,
+// bracketed paste, Unicode and Ctrl+C/D without a second competing reader.
+type monitorInput struct {
+	*os.File
+	mu                     sync.Mutex
+	enabled, armed, closed bool
+	target                 *monitor.Session
+	pending                []byte
+	decoder                terminal.EscapeDecoder
+	timer                  *time.Timer
+	commands               []string
+	notify                 func(monitorAction)
+	barrier                chan struct{}
+	ctx                    context.Context
+}
+
+func (r *monitorInput) resetLocked() {
+	if r.timer != nil {
+		r.timer.Stop()
+		r.timer = nil
+	}
+	r.decoder = terminal.EscapeDecoder{PrefixCommand: func(raw []byte) bool {
+		command := ""
+		switch string(raw) {
+		case "\x1b[A", "p":
+			command = "previous"
+		case "\x1b[B", "n":
+			command = "next"
+		}
+		if command == "" {
+			return false
+		}
+		r.commands = append(r.commands, command)
+		return true
+	}, Command: func(raw []byte, key uint16) bool {
+		command := ""
+		if key == 0x06 {
+			command = "search"
+		} else if key == terminal.KeyCtrlEnter {
+			command = "attach"
+		}
+		if command == "" {
+			return false
+		}
+		r.commands = append(r.commands, command)
+		return true
+	}}
+	r.commands = nil
+}
+func (r *monitorInput) Arm(armed bool) { r.mu.Lock(); r.armed = armed; r.mu.Unlock() }
+func (r *monitorInput) Begin() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.target != nil {
+		r.pending = nil
+	}
+	r.target = nil
+	r.enabled = true
+	r.resetLocked()
+}
+func (r *monitorInput) Disable() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.enabled = false
+	r.target = nil
+	r.pending = nil
+	r.resetLocked()
+}
+func (r *monitorInput) Stop() { r.Disable(); r.mu.Lock(); r.closed = true; r.mu.Unlock() }
+func (r *monitorInput) SetTarget(s *monitor.Session) {
+	r.mu.Lock()
+	if r.closed || !r.enabled {
+		r.mu.Unlock()
+		return
+	}
+	r.target = s
+	pending := r.pending
+	r.pending = nil
+	r.mu.Unlock()
+	if len(pending) > 0 {
+		r.forward(pending)
+	}
+}
+func (r *monitorInput) Read(p []byte) (int, error) {
+	n, err := r.File.Read(p)
+	if n == 0 {
+		return n, err
+	}
+	r.waitSearch()
+	r.mu.Lock()
+	active := r.enabled
+	// Preserve typeahead when v and application input arrive in one read.
+	if !active && r.armed && p[0] == 'v' {
+		r.enabled = true
+		r.pending = append([]byte(nil), p[1:n]...)
+		r.resetLocked()
+		r.mu.Unlock()
+		p[0] = 'v'
+		return 1, err
+	}
+	r.mu.Unlock()
+	if !active {
+		return n, err
+	}
+	remainder := r.route(p[:n], true)
+	r.waitSearch()
+	return copy(p, remainder), err
+}
+func (r *monitorInput) waitSearch() {
+	r.mu.Lock()
+	barrier := r.barrier
+	r.mu.Unlock()
+	if barrier != nil {
+		ctx := r.ctx
+		if ctx == nil {
+			ctx = context.Background()
+		}
+		select {
+		case <-barrier:
+		case <-ctx.Done():
+		}
+	}
+}
+func (r *monitorInput) forward(raw []byte) {
+	r.route(raw, false)
+}
+func (r *monitorInput) route(raw []byte, fromRead bool) []byte {
+	r.mu.Lock()
+	if !r.enabled || r.closed {
+		r.mu.Unlock()
+		return nil
+	}
+	target := r.target
+	if target == nil {
+		if len(r.pending)+len(raw) <= 64*1024 {
+			r.pending = append(r.pending, raw...)
+			r.mu.Unlock()
+			return nil
+		}
+		r.enabled = false
+		r.pending = nil
+		r.mu.Unlock()
+		r.notify(monitorAction{kind: "input-error", err: errors.New("monitor input buffer is full")})
+		return nil
+	}
+	if r.timer != nil {
+		r.timer.Stop()
+		r.timer = nil
+	}
+	data, detach := r.decoder.Feed(raw)
+	commands := append([]string(nil), r.commands...)
+	r.commands = nil
+	var ready chan struct{}
+	var remainder []byte
+	if detach {
+		if len(commands) == 0 {
+			commands = []string{"back"}
+		}
+		r.enabled = len(commands) > 0 && (commands[0] == "next" || commands[0] == "previous")
+		if r.enabled {
+			r.pending = append([]byte(nil), r.decoder.Remaining...)
+		}
+		if commands[0] == "search" {
+			ready = make(chan struct{})
+			r.barrier = ready
+			remainder = append([]byte(nil), r.decoder.Remaining...)
+		}
+		r.target = nil
+		r.resetLocked()
+	} else if r.decoder.PendingEscape() {
+		r.timer = time.AfterFunc(50*time.Millisecond, func() { r.flush(target) })
+	}
+	r.mu.Unlock()
+	if len(data) > 0 {
+		if err := target.Input(data); err != nil {
+			r.notify(monitorAction{kind: "input-error", session: target, err: err})
+			if ready != nil {
+				close(ready)
+			}
+			return nil
+		}
+	}
+	for _, command := range commands {
+		action := monitorAction{kind: command, session: target, ready: ready}
+		if !fromRead {
+			action.raw = remainder
+		}
+		r.notify(action)
+	}
+	return remainder
+}
+func (r *monitorInput) flush(target *monitor.Session) {
+	r.mu.Lock()
+	if r.closed || !r.enabled || r.target != target {
+		r.mu.Unlock()
+		return
+	}
+	data := r.decoder.FlushEscape()
+	r.timer = nil
+	r.mu.Unlock()
+	if len(data) > 0 {
+		if err := target.Input(data); err != nil {
+			r.notify(monitorAction{kind: "input-error", session: target, err: err})
+		}
+	}
+}
+
+// Preserve key events that were decoded just before v enabled the raw route.
+func prefetchedMonitorKey(msg tea.KeyPressMsg) []byte {
+	k := msg.Key()
+	if k.Code == tea.KeyEnter && k.Mod == tea.ModCtrl {
+		return []byte("\x1b[13;5u")
+	}
+	if k.Mod&tea.ModCtrl != 0 && k.Code >= '@' && k.Code <= 'z' {
+		return []byte{byte(k.Code) & 0x1f}
+	}
+	if k.Text != "" {
+		return []byte(k.Text)
+	}
+	switch k.Code {
+	case tea.KeyEnter:
+		return []byte{'\r'}
+	case tea.KeyTab:
+		return []byte{'\t'}
+	case tea.KeyEscape:
+		return []byte{0x1b}
+	case tea.KeyBackspace:
+		return []byte{0x7f}
+	case tea.KeyUp:
+		return []byte("\x1b[A")
+	case tea.KeyDown:
+		return []byte("\x1b[B")
+	case tea.KeyLeft:
+		return []byte("\x1b[D")
+	case tea.KeyRight:
+		return []byte("\x1b[C")
+	case tea.KeyF12:
+		return []byte("\x1b[24~")
+	}
+	return nil
+}

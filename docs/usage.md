@@ -3,16 +3,41 @@
 ## Create and reconnect
 
 ```sh
-mtask new --name work -- bash
-mtask new -d --name build -- make test
-mtask new --cwd /absolute/project --name editor -- vim README.md
+mtask new -s work -- bash
+mtask new -ds build -- make test
+mtask new -c /absolute/project -s editor -- vim README.md
 mtask attach work
 ```
 
 Interactive `new` enters the task immediately. `-d`, `--json` or non-terminal input
 starts it in the background. Omit the command to use `$SHELL` or `/bin/sh`.
-Commands run as argv; use `bash -lc '...'` explicitly for shell syntax.
+A single quoted command runs through `$SHELL -c`, for example
+`mtask new -ds build 'make test && make build'`. Multiple arguments run directly
+as argv. Use `--` before a command to keep even a single argument literal.
+Place mtask flags before the command; remaining flags belong to the application.
 Tasks accept names, full IDs or unique ID prefixes of at least four characters.
+
+## tmux session commands
+
+| Command | Supported flags / aliases |
+| --- | --- |
+| `new-session` | `new`, `-s NAME`, `-c DIRECTORY`, `-d`, `-A` |
+| `list-sessions` | `ls`, `--json`, `--history` |
+| `attach-session` | `attach`, `a`, `-t SESSION`, `-r`, `--shared`, `--takeover` |
+| `rename-session` | `rename`, `-t SESSION NAME` |
+| `has-session` | `has`, `-t SESSION`; exit 0 if running, 1 otherwise |
+| `kill-session` | `-t SESSION`; stops the task and removes its history |
+
+`new -As work` attaches to a running named session or creates it. Add `-d` to
+leave it detached. An ended record keeps its name; inspect or delete it first.
+Targets accept names, IDs or unique ID prefixes; positional targets still work.
+Targets are explicit: tmux window/pane syntax, formats, implicit current sessions
+and `attach -d` are unsupported. Listing includes retained stopped records.
+
+Existing scripts should replace `list` with `ls`, `status` with `show`, `rm` with
+`delete`, and `new -n` with `new -s`. `show` always prints JSON; its redundant
+`--json` flag was removed. Use `stop` when you want to retain output history;
+`delete` removes a stopped record.
 
 ## Detach keys
 
@@ -36,11 +61,11 @@ sequences wait up to 50 ms before being forwarded.
 The title row shows the main shortcuts; F1/? opens the full list.
 
 ```sh
-mtask list --json
+mtask ls --json
 mtask show work
 mtask rename work work-old
 mtask stop work-old
-mtask list --history --json
+mtask ls --history --json
 mtask logs work-old
 mtask logs --follow work-old
 mtask logs --tail 4096 work-old
@@ -83,11 +108,26 @@ Unix UID. Older brokers retain ordinary exclusive attach.
 
 ## Monitor and settings
 
-Press `v` in Running to preview a task. ↑/↓ switches tasks, F5 retries, Enter
-attaches, and v/Esc returns. ←/→ and h/l do nothing in the monitor's main view;
-dialogs and inputs keep their normal arrow keys. Monitoring uses an exclusive
-connection and the pane's size. Leaving retains that size. Occupied or unavailable
-tasks display “Unable to monitor.”
+In the TUI, new sessions open selected in half-pane control. Enter or `v` on a
+running session opens the same view. Ordinary input, Enter, arrows, Ctrl+C/D and
+pasted text go directly to the application. **Ctrl+Enter** opens fullscreen; F12
+or Ctrl+B, d returns to the list. Ctrl+B, ↑/↓ switches tasks. List actions such
+as new, stop and rename are available after returning to the list. Ctrl+Enter
+requires a terminal that sends it distinctly from Enter; the CLI `attach` command
+always opens fullscreen. Shift+Enter has no manager action.
+
+The monitor owns an exclusive connection and uses the pane's size. Leaving
+retains that size. Occupied or unavailable tasks display “Unable to monitor”;
+↑/↓ selects another task, F5 retries, and F12/Esc returns to the list. Embedded
+control supports keyboard input; use fullscreen attach for native terminal mouse
+behavior and terminal extensions.
+
+Press **Ctrl+F** in the list or monitor to search running and stopped sessions.
+Words match name, ID, directory and command without case sensitivity. ↑/↓ and
+PgUp/PgDn navigate results; Enter opens control or stopped output, Ctrl+Enter
+opens fullscreen, and Esc cancels. Search input stays out of the application.
+Cancelling resumes the same monitor without resizing. The list scrolls with the
+selection and supports PgUp/PgDn and Home/End.
 
 Settings shows the installed version. Open the editor with Enter or `,`.
 ↑/↓ selects a field, ←/→ changes it, Enter saves, Esc cancels. Tab switches tabs

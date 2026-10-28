@@ -39,6 +39,10 @@ jobs:
           "$RUNNER_TEMP/mtask-screen/bin/python" scripts/ui_regression.py bin/mtask
 
           "$RUNNER_TEMP/mtask-screen/bin/python" scripts/connection_modes_regression.py bin/mtask
+          "$RUNNER_TEMP/mtask-screen/bin/python" scripts/tmux_cli_regression.py bin/mtask
+          "$RUNNER_TEMP/mtask-screen/bin/python" scripts/monitor_control_regression.py bin/mtask
+          "$RUNNER_TEMP/mtask-screen/bin/python" scripts/search_regression.py bin/mtask
+          "$RUNNER_TEMP/mtask-screen/bin/python" scripts/idle_cpu_regression.py bin/mtask
           "$RUNNER_TEMP/mtask-screen/bin/python" scripts/monitor_dialog_regression.py bin/mtask
           "$RUNNER_TEMP/mtask-screen/bin/python" scripts/history_view_regression.py bin/mtask
           "$RUNNER_TEMP/mtask-screen/bin/python" scripts/history_regression.py bin/mtask

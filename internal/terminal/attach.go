@@ -314,9 +314,8 @@ func ResetModes(output io.Writer) error {
 	return err
 }
 
-// /dev/tty does not support Go's kqueue poller on macOS. Native poll with a
-// bounded wait supports both platforms and guarantees cancellation without
-// closing the descriptor before termios has been restored.
+// Bounded native waits allow cancellation without closing the descriptor
+// before termios has been restored. macOS /dev/tty requires select, not poll.
 func readTTY(ctx context.Context, fd int, p []byte) (int, error) {
 	return readTTYUntil(ctx, fd, p, time.Time{})
 }
@@ -334,15 +333,14 @@ func readTTYUntil(ctx context.Context, fd int, p []byte, deadline time.Time) (in
 			}
 			wait = min(wait, max(1, int((remaining+time.Millisecond-1)/time.Millisecond)))
 		}
-		fds := []unix.PollFd{{Fd: int32(fd), Events: unix.POLLIN}}
-		n, err := unix.Poll(fds, wait)
+		ready, err := waitTTY(fd, unix.POLLIN, wait)
 		if errors.Is(err, unix.EINTR) {
 			continue
 		}
 		if err != nil {
 			return 0, err
 		}
-		if n == 0 {
+		if !ready {
 			continue
 		}
 		count, err := unix.Read(fd, p)
@@ -364,15 +362,14 @@ func writeTTY(ctx context.Context, fd int, p []byte) error {
 		if time.Now().After(deadline) {
 			return os.ErrDeadlineExceeded
 		}
-		fds := []unix.PollFd{{Fd: int32(fd), Events: unix.POLLOUT}}
-		n, err := unix.Poll(fds, 100)
+		ready, err := waitTTY(fd, unix.POLLOUT, 100)
 		if errors.Is(err, unix.EINTR) {
 			continue
 		}
 		if err != nil {
 			return err
 		}
-		if n == 0 {
+		if !ready {
 			continue
 		}
 		count, err := unix.Write(fd, p)

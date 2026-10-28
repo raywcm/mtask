@@ -61,7 +61,7 @@
     "history_empty": "保存された出力はありません。",
     "history_hint": "↑/↓ スクロール · PgUp/PgDn ページ · ←/→ 横移動 · Home/End · Esc/q 戻る",
     "monitor": "モニター",
-    "monitor_hint": "↑/↓ 選択 · Enter 接続 · v/Esc 戻る · F5 再試行",
+    "monitor_hint": "F12 一覧 · Ctrl+F 検索 · Ctrl+B ↑↓ 切替 · Ctrl+Enter 全画面",
     "monitor_select": "セッションを選択",
     "monitor_unavailable": "監視できません",
     "monitor_busy": "別の端末がこのセッションを使用中です。",
@@ -120,7 +120,13 @@
     "day": "日",
     "hour": "時間",
     "minute": "分",
-    "second": "秒"
+    "second": "秒",
+    "monitor_control": "操作中",
+    "monitor_retry_hint": "↑/↓ 選択 · F5 再試行 · F12/Esc 一覧",
+    "search_sessions": "セッション検索",
+    "search_empty": "一致するセッションはありません",
+    "search_hint": "入力して検索 · ↑↓/PgUp/PgDn 選択 · Enter 操作 · Ctrl+Enter 全画面 · Esc 戻る",
+    "sessions": "セッション"
   },
   "cli": {
     "disconnect existing controllers and take control": "既存の操作接続を切断して引き継ぐ",
@@ -151,6 +157,10 @@
     "include session CPU and memory samples": "セッションの CPU とメモリの測定値を含める",
     "Help about any command": "各コマンドのヘルプを表示",
     "Enter a task; F12 detaches": "タスクを開く；F12 で切断",
-    "forward every input byte, including detach keys": "切断キーを含むすべての入力をそのまま転送"
+    "forward every input byte, including detach keys": "切断キーを含むすべての入力をそのまま転送",
+    "Check whether a session is running": "セッションの実行状態を確認",
+    "Stop a session and delete its history": "セッションを停止して履歴を削除",
+    "target session name or ID": "対象セッション名または ID",
+    "attach to the named session if it already exists": "同名のセッションがあれば接続"
   }
 }

@@ -1,6 +1,6 @@
-// Package monitor reconstructs a read-only screen from bounded task output logs.
-// It acquires an exclusive display lease and resizes it to the preview pane.
-// It never sends keyboard input and refuses an occupied session.
+// Package monitor reconstructs a screen from bounded task output logs.
+// Its exclusive connection carries keyboard input and owns the pane size.
+// Occupied sessions are refused without displacing their clients.
 package monitor
 
 import (
@@ -14,31 +14,34 @@ import (
 	"unicode"
 
 	"github.com/charmbracelet/x/vt"
-	"golang.org/x/sys/unix"
 	"github.com/raywcm/mtask/internal/ipc"
 	"github.com/raywcm/mtask/internal/protocol"
 	"github.com/raywcm/mtask/internal/store"
 	"github.com/raywcm/mtask/internal/task"
+	"golang.org/x/sys/unix"
 )
 
 type Frame struct {
-	Rows                   []string
-	Width, Height, CursorY int
-	Alternate              bool
-	Ready, Ended           bool
-	Err                    error
+	Rows                            []string
+	Width, Height, CursorX, CursorY int
+	CursorHidden                    bool
+	Alternate                       bool
+	Ready, Ended                    bool
+	Err                             error
 }
 type Session struct {
-	mu     sync.RWMutex
-	frame  Frame
-	cancel context.CancelFunc
-	done   chan struct{}
-	resize chan task.Size
+	mu         sync.RWMutex
+	frame      Frame
+	cancel     context.CancelFunc
+	done       chan struct{}
+	resize     chan task.Size
+	connection *ipc.Session
+	connected  chan struct{}
 }
 
 func Open(ctx context.Context, repository *store.JSON, record task.Record, size task.Size) *Session {
 	ctx, cancel := context.WithCancel(ctx)
-	s := &Session{cancel: cancel, done: make(chan struct{}), resize: make(chan task.Size, 1)}
+	s := &Session{cancel: cancel, done: make(chan struct{}), connected: make(chan struct{}), resize: make(chan task.Size, 1)}
 	go func() { defer close(s.done); s.run(ctx, repository, record, size) }()
 	return s
 }
@@ -59,6 +62,33 @@ func (s *Session) Resize(size task.Size) {
 		default:
 		}
 	}
+}
+
+// Input uses the monitor's existing exclusive display lease. Switching between
+// preview and input never reconnects or changes the PTY dimensions.
+func (s *Session) Input(data []byte) error {
+	if s.connected == nil {
+		return errors.New("session is unavailable for input")
+	}
+	select {
+	case <-s.connected:
+	case <-s.done:
+		return errors.New("session is unavailable for input")
+	}
+	s.mu.RLock()
+	conn, frame := s.connection, s.frame
+	s.mu.RUnlock()
+	if conn == nil || frame.Ended || frame.Err != nil {
+		return errors.New("session is unavailable for input")
+	}
+	for len(data) > 0 {
+		n := min(len(data), protocol.MaxPayload)
+		if err := conn.Send(protocol.Frame{Kind: protocol.Input, Payload: data[:n]}); err != nil {
+			return err
+		}
+		data = data[n:]
+	}
+	return nil
 }
 func (s *Session) Close() { s.cancel(); <-s.done }
 
@@ -118,7 +148,7 @@ func screenFrame(e *vt.Emulator) Frame {
 		line.WriteString("\x1b[0m")
 		rows[y] = line.String()
 	}
-	return Frame{Rows: rows, Width: e.Width(), Height: e.Height(), CursorY: e.CursorPosition().Y, Alternate: e.IsAltScreen(), Ready: true}
+	return Frame{Rows: rows, Width: e.Width(), Height: e.Height(), CursorX: e.CursorPosition().X, CursorY: e.CursorPosition().Y, CursorHidden: e.CursorHidden(), Alternate: e.IsAltScreen(), Ready: true}
 }
 func (s *Session) publish(e *vt.Emulator, err error, ended bool) {
 	frame := screenFrame(e)
@@ -205,6 +235,11 @@ func (s *Session) run(ctx context.Context, repository *store.JSON, r task.Record
 		}
 		return
 	}
+	s.mu.Lock()
+	s.connection = conn
+	close(s.connected)
+	s.mu.Unlock()
+	defer func() { s.mu.Lock(); s.connection = nil; s.mu.Unlock() }()
 	type result struct {
 		err   error
 		ended bool

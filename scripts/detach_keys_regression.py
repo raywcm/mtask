@@ -76,7 +76,7 @@ def main():
             pid, fd = h.spawn_tty(); terminal = Terminal()
             wait_view(fd, terminal, lambda text: 'hotkey-work' in text and 'Running' in text)
             for key in keys[:3]:
-                os.write(fd, b'\r')
+                os.write(fd, b'\x1b[13;5u')
                 wait_view(fd, terminal, lambda text: 'hotkey-work [' in text)
                 os.write(fd, key)
                 wait_view(fd, terminal, lambda text: 'Running' in text and 'hotkey-work' in text and 'F12' in text)

@@ -70,7 +70,9 @@ At attach boundaries, known modes are read from bounded logs and the instance's
 redraw wait of up to two seconds. No full screen snapshot or scrollback is kept.
 
 The monitor uses a separate VT fed from retained logs. It acquires an exclusive
-display connection, uses the pane size and retains that size when leaving.
+display connection, forwards keyboard input and uses half of the terminal width.
+Leaving retains that size. Ctrl+F pauses input forwarding for session search;
+Ctrl+Enter leaves the TUI for fullscreen attach.
 Repeated identical sizes are ignored. Device replies are disabled; only rendered
 cells and SGR reach the frontend. The VT is limited to 512×256 cells and about
 4 MiB of parser buffering. Only the selected preview is active.

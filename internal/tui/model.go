@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"time"
 
@@ -94,6 +95,8 @@ type model struct {
 	monitorID                            task.ID
 	monitorGeneration                    uint64
 	monitorFrame                         monitor.Frame
+	monitorInput                         *monitorInput
+	searchCursor                         int
 	repaintPending                       bool
 	quitting                             bool
 	history                              historyState
@@ -252,6 +255,9 @@ func (m model) Init() tea.Cmd { return func() tea.Msg { return tick(time.Now()) 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	next, cmd := m.update(msg)
 	updated := next.(model)
+	if updated.monitorInput != nil {
+		updated.monitorInput.Arm(updated.tab == tabRunning && !updated.monitoring && updated.mode == "" && !updated.busy)
+	}
 	// Switching modal geometry over a live pane can confuse hardware-scroll
 	// diffing. Invalidate once at this boundary; ordinary monitor frames still
 	// use incremental rendering. Never queue a repaint when leaving for attach.
@@ -271,6 +277,43 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case monitorAction:
+		if msg.ready != nil {
+			defer close(msg.ready)
+		}
+		if !m.monitoring || (msg.session != nil && msg.session != m.monitorSession) {
+			return m, nil
+		}
+		switch msg.kind {
+		case "search":
+			cmd := m.openSearch()
+			return m.searchTypeahead(msg.raw, cmd)
+		case "next", "previous":
+			step := 1
+			if msg.kind == "previous" {
+				step = -1
+			}
+			m.cursors[0] = min(max(0, len(m.rows(0))-1), max(0, m.cursors[0]+step))
+			current, ok := m.current()
+			if ok && current.Spec.ID == m.monitorID && m.monitorInput != nil && msg.session == m.monitorSession {
+				m.monitorInput.Begin()
+				m.monitorInput.SetTarget(m.monitorSession)
+			}
+			return m, m.syncMonitor()
+		case "attach":
+			if r, ok := m.current(); ok {
+				m.selected = Selection{Kind: "attach", ID: r.Spec.ID, State: m.state()}
+				return m.quit()
+			}
+		case "back", "input-error":
+			m.monitoring = false
+			m.closeMonitor()
+			if msg.err != nil {
+				m.err = msg.err
+			}
+			return m, nil
+		}
+		return m, nil
 	case exitRequested:
 		return m.quit()
 	case historyLoaded:
@@ -308,7 +351,13 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.monitorSession = msg.session
 		if msg.err != nil {
 			m.monitorFrame.Err = msg.err
+			if m.monitorInput != nil {
+				m.monitorInput.Disable()
+			}
 		} else if msg.session != nil {
+			if m.monitorInput != nil {
+				m.monitorInput.SetTarget(msg.session)
+			}
 			msg.session.Resize(m.monitorSize())
 			return m, monitorTickCmd(m.monitorGeneration)
 		}
@@ -319,6 +368,14 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.monitorSession != nil {
 			m.monitorFrame = m.monitorSession.Snapshot()
+			if m.monitorFrame.Err != nil && m.monitorInput != nil {
+				m.monitorInput.Disable()
+			}
+			if m.monitorFrame.Ended {
+				m.monitoring = false
+				m.closeMonitor()
+				return m, m.startLoad()
+			}
 		}
 		return m, monitorTickCmd(m.monitorGeneration)
 	case loaded:
@@ -393,8 +450,26 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.monitorSession.Resize(m.monitorSize())
 		}
 		return m, m.syncMonitor()
+	case tea.PasteMsg:
+		if m.monitoring && m.mode == "" && m.monitorInput != nil && m.monitorFrame.Err == nil {
+			m.monitorInput.forward([]byte("\x1b[200~" + msg.Content + "\x1b[201~"))
+			return m, nil
+		}
 	case tea.KeyPressMsg:
 		k := msg.String()
+		if m.mode == "search" {
+			return m.updateSearch(msg)
+		}
+		if k == "ctrl+f" && m.mode == "" && !m.busy {
+			return m, m.openSearch()
+		}
+		if m.monitoring && m.monitorID != "" && m.mode == "" && m.monitorInput != nil && m.monitorFrame.Err == nil && m.width >= 50 && m.height >= 12 {
+			// Only events already parsed before monitor activation reach here.
+			if raw := prefetchedMonitorKey(msg); len(raw) > 0 {
+				m.monitorInput.forward(raw)
+			}
+			return m, nil
+		}
 		if k == "ctrl+c" {
 			return m.quit()
 		}
@@ -524,6 +599,12 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					return m, m.syncMonitor()
 				}
+			case "f12":
+				if m.monitoring {
+					m.monitoring = false
+					m.closeMonitor()
+				}
+				return m, nil
 			case "q", "esc":
 				if k == "esc" && m.monitoring {
 					m.monitoring = false
@@ -546,6 +627,19 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.syncMonitor()
 			case "down", "j":
 				m.cursors[m.tab] = min(max(0, len(m.rows(m.tab))-1), m.cursors[m.tab]+1)
+				return m, m.syncMonitor()
+			case "pgup", "pgdown", "home", "end":
+				last := max(0, len(m.rows(m.tab))-1)
+				step := max(1, m.height-8)
+				if k == "pgup" {
+					step = -step
+				}
+				m.cursors[m.tab] = min(last, max(0, m.cursors[m.tab]+step))
+				if k == "home" {
+					m.cursors[m.tab] = 0
+				} else if k == "end" {
+					m.cursors[m.tab] = last
+				}
 				return m, m.syncMonitor()
 			case "r", "f5":
 				m.err = nil
@@ -572,13 +666,17 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.input.SetValue("")
 					return m, m.input.Focus()
 				}
-			case "enter":
+			case "enter", "ctrl+enter":
 				if m.busy {
 					return m, nil
 				}
 				if r, ok := m.current(); ok {
 					if !active(r) {
 						return m, m.openHistory(r)
+					}
+					if k == "enter" {
+						m.monitoring = true
+						return m, m.syncMonitor()
 					}
 					m.selected = Selection{Kind: "attach", ID: r.Spec.ID, State: m.state()}
 					return m.quit()
@@ -623,6 +721,9 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		}
+	}
+	if m.mode == "search" {
+		return m.updateSearch(msg)
 	}
 	if m.mode == "new" || m.mode == "rename" {
 		var cmd tea.Cmd
@@ -762,10 +863,20 @@ func Run(ctx context.Context, catalog Backend, input io.Reader, output io.Writer
 		return Selection{}, nil
 	}
 	m := newModel(ctx, catalog, notice, options)
+	var route *monitorInput
+	if file, ok := input.(*os.File); ok {
+		route = &monitorInput{File: file, ctx: ctx}
+		m.monitorInput = route
+		input = route
+	}
 	// main owns process signals. Bridge cancellation into a graceful model quit
 	// instead of killing Bubble Tea's context: the killed path closes its input
 	// reader without joining it, and skips the final empty alternate-screen frame.
 	program := tea.NewProgram(m, tea.WithContext(context.WithoutCancel(ctx)), tea.WithoutSignalHandler(), tea.WithInput(input), tea.WithOutput(output))
+	if route != nil {
+		route.notify = func(action monitorAction) { go program.Send(action) }
+		defer route.Stop()
+	}
 	done := make(chan struct{})
 	defer close(done)
 	go func() {

@@ -64,7 +64,7 @@
     "history_empty": "暂无保留的输出记录。",
     "history_hint": "↑/↓ 滚动 · PgUp/PgDn 翻页 · ←/→ 横移 · Home/End · Esc/q 返回",
     "monitor": "监控",
-    "monitor_hint": "↑/↓ 选择 · Enter 进入 · v/Esc 返回 · F5 重试",
+    "monitor_hint": "F12 返回列表 · Ctrl+F 搜索 · Ctrl+B ↑↓ 切换 · Ctrl+Enter 全屏",
     "monitor_select": "请选择会话",
     "monitor_unavailable": "无法监控",
     "monitor_busy": "此会话正被其他终端使用。",
@@ -124,7 +124,13 @@
     "day": "天",
     "hour": "小时",
     "minute": "分钟",
-    "second": "秒"
+    "second": "秒",
+    "monitor_control": "可控制",
+    "monitor_retry_hint": "↑/↓ 选择 · F5 重试 · F12/Esc 返回列表",
+    "search_sessions": "搜索会话",
+    "search_empty": "没有匹配的会话",
+    "search_hint": "输入筛选 · ↑↓/PgUp/PgDn 选择 · Enter 控制 · Ctrl+Enter 全屏 · Esc 返回",
+    "sessions": "个会话"
   },
   "cli": {
     "disconnect existing controllers and take control": "断开现有控制端并接管",
@@ -155,6 +161,10 @@
     "include session CPU and memory samples": "附带会话 CPU 和内存采样",
     "Help about any command": "查看命令帮助",
     "Enter a task; F12 detaches": "进入会话；F12 断开连接",
-    "forward every input byte, including detach keys": "原样转发所有输入字节，包括断开快捷键"
+    "forward every input byte, including detach keys": "原样转发所有输入字节，包括断开快捷键",
+    "Check whether a session is running": "检查会话是否运行",
+    "Stop a session and delete its history": "停止会话并删除历史",
+    "target session name or ID": "目标会话名称或 ID",
+    "attach to the named session if it already exists": "同名会话已存在时直接进入"
   }
 }

@@ -94,7 +94,7 @@ def main():
             htop=shutil.which('htop')
             last_session='system-monitor' if htop else 'scratch-shell'
             if htop:
-                pids=','.join(str(r['runtime']['child_pid']) for r in json.loads(h.cli('list','--json').stdout))
+                pids=','.join(str(r['runtime']['child_pid']) for r in json.loads(h.cli('ls','--json').stdout))
                 create(last_session,htop,'--readonly','--pid',pids,'--delay','10')
             else:
                 create(last_session,'/usr/bin/env','PS1=scratch-shell$ ','/bin/sh','-i')
@@ -104,7 +104,7 @@ def main():
                 ('directory-list',['/bin/ls']),
             ]:
                 h.finished(create(name,*command))
-            before={r['spec']['id']:r['runtime'] for r in json.loads(h.cli('list','--json').stdout) if r['runtime']['state']=='running'}
+            before={r['spec']['id']:r['runtime'] for r in json.loads(h.cli('ls','--json').stdout) if r['runtime']['state']=='running'}
             assert len(before)==8
             terminal = Terminal(columns, rows); start=time.monotonic(); original=terminal.feed
             def feed(data):
@@ -126,31 +126,33 @@ def main():
             colors={terminal.current.buffer[y][x].fg for y in range(rows) for x in range(columns)}
             assert '70e1c8' in colors, 'the application did not emit its normal accent color'
             scene('Task list · 8 running sessions',3)
-            os.write(fd,b'\r');wait_view(fd,terminal,lambda text:not terminal.alternate and 'mtask$' in text)
+            os.write(fd,b'\x1b[13;5u');wait_view(fd,terminal,lambda text:not terminal.alternate and 'mtask$' in text)
             ls = 'ls -G' if sys.platform=='darwin' else 'ls --color=auto'
             os.write(fd,(ls+'\r').encode())
             wait_view(fd,terminal,lambda text:'examples' in text and 'README.md' in text)
-            scene('Enter · open dev-shell',3)
+            scene('Ctrl+Enter · open dev-shell',3)
             os.write(fd,b'\x1b[24~');wait_view(fd,terminal,lambda text:terminal.alternate and 'Running 8' in text and last_session in text)
             scene('F12 · return to the task list',2)
             if htop:
-                os.write(fd,b'\x1b[B'*7+b'\r')
+                os.write(fd,b'\x1b[B'*7+b'\x1b[13;5u')
                 wait_view(fd,terminal,lambda text:'PID' in text and 'Command' in text and 'Running 8' not in text)
-                scene('Enter · run htop in its own terminal',3)
+                scene('Ctrl+Enter · run htop in its own terminal',3)
                 os.write(fd,b'\x1b[24~');wait_view(fd,terminal,lambda text:'Running 8' in text and 'Memory' in text)
                 os.write(fd,b'\x1b[A'*7)
-            os.write(fd,b'v');wait_view(fd,terminal,lambda text:'README.md' in text and 'Read only' in text)
-            scene('v · monitor the selected session',3)
-            os.write(fd,b'\x1b[B'*3);wait_view(fd,terminal,lambda text:'Files:' in text)
-            scene('Up / Down · switch the monitor',2.5)
-            os.write(fd,b'v');wait_view(fd,terminal,lambda text:'Read only' not in text and 'Memory' in text)
+            os.write(fd,b'v');wait_view(fd,terminal,lambda text:'README.md' in text and 'Control' in text)
+            os.write(fd,b"printf 'Input works inside the monitor\\n'\r")
+            wait_view(fd,terminal,lambda text:'Input works inside' in text)
+            scene('v · type directly in the monitor',3)
+            os.write(fd,b'\x02\x1b[B'*3);wait_view(fd,terminal,lambda text:'Files:' in text)
+            scene('Ctrl+B, Down · switch the monitor',2.5)
+            os.write(fd,b'\x1b[24~');wait_view(fd,terminal,lambda text:'Control' not in text and 'Memory' in text)
             os.write(fd,b'c');wait_view(fd,terminal,lambda text:'Connection modes' in text)
             scene('c · choose how to connect',2.5)
             os.write(fd,b'\x1b');wait_view(fd,terminal,lambda text:'Connection modes' not in text)
-            os.write(fd,b'\x1b[A'*3+b'\r');wait_view(fd,terminal,lambda text:not terminal.alternate and 'dev-shell [' in text)
+            os.write(fd,b'\x1b[A'*3+b'\x1b[13;5u');wait_view(fd,terminal,lambda text:not terminal.alternate and 'dev-shell [' in text)
             os.write(fd,b"printf 'Shell PID: %s\\n' \"$$\"\r")
             wait_view(fd,terminal,lambda text:('Shell PID: '+str(before[dev]['child_pid'])) in text)
-            scene('Enter · reconnect to the same process',2.5)
+            scene('Ctrl+Enter · reconnect to the same process',2.5)
             os.write(fd,b'\x02d');wait_view(fd,terminal,lambda text:terminal.alternate and 'Running 8' in text and 'Memory' in text)
             scene('Ctrl+B then d · return to the list',2)
             os.write(fd,b's');wait_view(fd,terminal,lambda text:'Stop this session' in text)

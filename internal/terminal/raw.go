@@ -28,19 +28,33 @@ func WithRaw(tty *os.File, run func() error) (err error) {
 // Unknown input is returned unchanged; incomplete escape sequences are bounded.
 type EscapeDecoder struct {
 	Disable bool
-	pending uint16
-	prefix  []byte
-	escape  []byte
-	pasting bool
+	// PrefixCommand handles manager commands in an embedded terminal. Ordinary
+	// full-screen attachments leave this nil and retain byte-transparent input.
+	PrefixCommand func([]byte) bool
+	// Command recognizes additional manager keys outside bracketed paste.
+	Command func([]byte, uint16) bool
+	// Remaining contains bytes after a handled command, for pane switching.
+	Remaining []byte
+	pending   uint16
+	prefix    []byte
+	escape    []byte
+	pasting   bool
 }
 
 const inputEscapeLimit = 64
 
 func (d *EscapeDecoder) Feed(input []byte) (output []byte, detach bool) {
+	d.Remaining = nil
 	if d.Disable {
 		return append([]byte(nil), input...), false
 	}
 	for index, b := range input {
+		// A control key after a bare Esc is a new key, not a CSI sequence.
+		// This also handles Vim Esc + detach arriving in a single TTY read
+		// after startup/repaint delayed input processing.
+		if len(d.escape) == 1 && b < 0x20 && b != 0x1b {
+			output = append(output, d.flushEscape()...)
+		}
 		if len(d.escape) > 0 {
 			d.escape = append(d.escape, b)
 			if len(d.escape) == 2 && b == '[' {
@@ -53,6 +67,7 @@ func (d *EscapeDecoder) Feed(input []byte) (output []byte, detach bool) {
 			d.escape = nil
 			output = append(output, part...)
 			if done {
+				d.Remaining = append([]byte(nil), input[index+1:]...)
 				return output, true
 			}
 			continue
@@ -64,6 +79,7 @@ func (d *EscapeDecoder) Feed(input []byte) (output []byte, detach bool) {
 		part, done := d.consume(input[index:index+1], uint16(b))
 		output = append(output, part...)
 		if done {
+			d.Remaining = append([]byte(nil), input[index+1:]...)
 			return output, true
 		}
 	}
@@ -75,6 +91,8 @@ const (
 	keyPasteStart
 	keyPasteEnd
 	keyRelease
+	// KeyCtrlEnter is distinct only in enhanced terminal keyboard encodings.
+	KeyCtrlEnter
 )
 
 func (d *EscapeDecoder) consume(raw []byte, key uint16) ([]byte, bool) {
@@ -91,6 +109,9 @@ func (d *EscapeDecoder) consume(raw []byte, key uint16) ([]byte, bool) {
 	if key == keyPasteStart {
 		d.pasting = true
 	}
+	if !d.pasting && d.pending == 0 && d.Command != nil && d.Command(raw, key) {
+		return nil, true
+	}
 	if d.pending != 0 {
 		if key == keyRelease && len(d.prefix)+len(raw) <= 256 {
 			d.prefix = append(d.prefix, raw...)
@@ -99,6 +120,9 @@ func (d *EscapeDecoder) consume(raw []byte, key uint16) ([]byte, bool) {
 		prefix, saved := d.pending, d.prefix
 		d.pending, d.prefix = 0, nil
 		if key == 'd' || (prefix == 0x02 && key == 0x04) {
+			return nil, true
+		}
+		if prefix == 0x02 && d.PrefixCommand != nil && d.PrefixCommand(raw) {
 			return nil, true
 		}
 		if key == prefix {
@@ -114,8 +138,8 @@ func (d *EscapeDecoder) consume(raw []byte, key uint16) ([]byte, bool) {
 	return raw, false
 }
 
-// escapeKey recognizes unmodified F12 and the existing prefix keys in CSI-u
-// and modifyOtherKeys encodings. Modified F12 and release events pass through.
+// escapeKey recognizes manager keys in CSI-u and modifyOtherKeys encodings.
+// Modified F12 and release events pass through.
 func escapeKey(raw []byte) uint16 {
 	s := string(raw)
 	if s == "\x1b[200~" {
@@ -170,12 +194,16 @@ func escapeKey(raw []byte) uint16 {
 	}
 	if mods == 4 {
 		switch code {
+		case 13:
+			return KeyCtrlEnter
 		case 98:
 			return 0x02
 		case 100:
 			return 0x04
 		case 93:
 			return 0x1d
+		case 102:
+			return 0x06
 		}
 	}
 	if code == 100 && mods == 0 {
@@ -203,3 +231,9 @@ func (d *EscapeDecoder) Flush() []byte {
 	}
 	return out
 }
+
+// PendingEscape reports a partial terminal sequence requiring a short timeout.
+func (d *EscapeDecoder) PendingEscape() bool { return len(d.escape) != 0 }
+
+// FlushEscape forwards a standalone Esc without discarding a pending Ctrl+B.
+func (d *EscapeDecoder) FlushEscape() []byte { return d.flushEscape() }

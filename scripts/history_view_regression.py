@@ -50,7 +50,7 @@ def main():
                 os.write(fd,b'\x1b');wait_view(fd,terminal,lambda text:title not in text and 'empty-work' in text)
                 os.write(fd,b'q');drain(fd);assert h.join(pid)==0
                 assert h.show(ref)['runtime']==before
-            assert len(json.loads(h.cli('list','--json').stdout))==2
+            assert len(json.loads(h.cli('ls','--json').stdout))==2
             print('PASS five-language stopped Enter history, latest/first/page navigation, empty history, safe OSC stripping, return to Stop and no task restart or deletion',flush=True)
         finally:h.cleanup()
 

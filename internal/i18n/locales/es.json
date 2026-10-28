@@ -61,7 +61,7 @@
     "history_empty": "No hay salida guardada.",
     "history_hint": "↑/↓ desplazar · PgUp/PgDn página · ←/→ horizontal · Home/End · Esc/q volver",
     "monitor": "Monitor",
-    "monitor_hint": "↑/↓ elegir · Enter conectar · v/Esc volver · F5 reintentar",
+    "monitor_hint": "F12 lista · Ctrl+F buscar · Ctrl+B ↑↓ cambiar · Ctrl+Enter pantalla completa",
     "monitor_select": "Elige una sesión",
     "monitor_unavailable": "No se puede monitorizar",
     "monitor_busy": "Otra terminal está utilizando esta sesión.",
@@ -120,7 +120,13 @@
     "day": "día",
     "hour": "hora",
     "minute": "minuto",
-    "second": "segundo"
+    "second": "segundo",
+    "monitor_control": "Control",
+    "monitor_retry_hint": "↑/↓ elegir · F5 reintentar · F12/Esc lista",
+    "search_sessions": "Buscar sesiones",
+    "search_empty": "No hay sesiones coincidentes",
+    "search_hint": "Escribir para filtrar · ↑↓/PgUp/PgDn elegir · Enter controlar · Ctrl+Enter pantalla completa · Esc volver",
+    "sessions": "sesiones"
   },
   "cli": {
     "disconnect existing controllers and take control": "desconectar a los controladores y tomar el control",
@@ -151,6 +157,10 @@
     "include session CPU and memory samples": "incluir muestras de CPU y memoria de la sesión",
     "Help about any command": "Ayuda sobre cualquier comando",
     "Enter a task; F12 detaches": "Abrir una tarea; F12 desconecta",
-    "forward every input byte, including detach keys": "reenviar toda la entrada, incluidos los atajos de desconexión"
+    "forward every input byte, including detach keys": "reenviar toda la entrada, incluidos los atajos de desconexión",
+    "Check whether a session is running": "Comprobar si una sesión está activa",
+    "Stop a session and delete its history": "Detener una sesión y borrar su historial",
+    "target session name or ID": "nombre o ID de la sesión",
+    "attach to the named session if it already exists": "conectar si la sesión con ese nombre ya existe"
   }
 }
