@@ -77,7 +77,9 @@ def main():
             wait_view(fd, terminal, lambda text: 'hotkey-work' in text and 'Running' in text)
             for key in keys[:3]:
                 os.write(fd, b'\x1b[13;5u')
-                wait_view(fd, terminal, lambda text: 'hotkey-work [' in text)
+                # The main buffer retains the previous attachment's banner.
+                # Wait for fresh bytes, after the new client enabled raw mode.
+                terminal.feed(wait_output(fd, b'hotkey-work ['))
                 os.write(fd, key)
                 wait_view(fd, terminal, lambda text: 'Running' in text and 'hotkey-work' in text and 'F12' in text)
                 assert h.show(ref)['runtime'] == original
