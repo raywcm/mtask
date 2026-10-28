@@ -1,0 +1,59 @@
+name: test-and-package
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-14]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: go vet ./...
+      - run: go test -race -timeout 60s ./...
+      - run: python3 scripts/third_party_notices.py --check
+      - run: go build -race -o bin/mtask ./cmd/mtask
+      - run: python3 scripts/integration.py
+      - name: Verify visible screen on reconnect
+        run: |
+          python3 -m venv "$RUNNER_TEMP/mtask-screen"
+          "$RUNNER_TEMP/mtask-screen/bin/pip" install -r scripts/requirements-screen.txt
+          "$RUNNER_TEMP/mtask-screen/bin/python" scripts/screen_regression.py bin/mtask
+          "$RUNNER_TEMP/mtask-screen/bin/python" scripts/ui_regression.py bin/mtask
+
+          "$RUNNER_TEMP/mtask-screen/bin/python" scripts/connection_modes_regression.py bin/mtask
+          "$RUNNER_TEMP/mtask-screen/bin/python" scripts/monitor_dialog_regression.py bin/mtask
+          "$RUNNER_TEMP/mtask-screen/bin/python" scripts/history_view_regression.py bin/mtask
+          "$RUNNER_TEMP/mtask-screen/bin/python" scripts/history_regression.py bin/mtask
+          "$RUNNER_TEMP/mtask-screen/bin/python" scripts/tui_exit_regression.py bin/mtask
+  package:
+    runs-on: ubuntu-24.04
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: v2.19.0
+          args: release --snapshot --clean --skip=publish
+      - run: python3 scripts/apt_repo.py dist dist/apt
+      - run: python3 scripts/check_packages.py dist
+      - run: python3 scripts/ci_install_test.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mtask-local-packages
+          path: dist/
+          retention-days: 14

@@ -1,0 +1,53 @@
+version: 2
+project_name: mtask
+builds:
+  - id: mtask
+    main: ./cmd/mtask
+    binary: mtask
+    env: [CGO_ENABLED=0]
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+    flags: [-trimpath]
+    ldflags:
+      - -s -w -X github.com/raywcm/mtask/internal/cli.Version={{.Version}}
+archives:
+  - formats: [tar.gz]
+    name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+    files: [README.md, README.zh-CN.md, LICENSE, THIRD_PARTY_NOTICES.md, 'licenses/**', 'mtask 开发计划.md', 'docs/*.md', 'docs/archive/*.md', 'docs/assets/**']
+nfpms:
+  - id: linux
+    package_name: mtask
+    ids: [mtask]
+    maintainer: mtask contributors
+    license: MIT
+    description: Independent terminal task manager with persistent PTY brokers
+    formats: [deb, rpm]
+    bindir: /usr/bin
+    section: utils
+    priority: optional
+    contents:
+      - src: README.md
+        dst: /usr/share/doc/mtask/README.md
+      - src: README.zh-CN.md
+        dst: /usr/share/doc/mtask/README.zh-CN.md
+      - src: LICENSE
+        dst: /usr/share/doc/mtask/LICENSE
+      - src: THIRD_PARTY_NOTICES.md
+        dst: /usr/share/doc/mtask/THIRD_PARTY_NOTICES.md
+      - src: licenses
+        dst: /usr/share/doc/mtask/licenses
+        type: tree
+      - src: docs
+        dst: /usr/share/doc/mtask/docs
+        type: tree
+      - src: mtask 开发计划.md
+        dst: /usr/share/doc/mtask/mtask 开发计划.md
+checksum:
+  name_template: checksums.txt
+snapshot:
+  version_template: '0.4.3-dev'
+changelog:
+  disable: true
+# Public publishing is deliberately disabled at the user's request.
+release:
+  disable: true

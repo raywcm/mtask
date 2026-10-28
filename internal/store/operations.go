@@ -1,0 +1,101 @@
+package store
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"syscall"
+	"time"
+
+	"golang.org/x/sys/unix"
+	"github.com/raywcm/mtask/internal/task"
+)
+
+func (s *JSON) Root() string { return s.root }
+func (s *JSON) Path(id task.ID, name string) (string, error) {
+	dir, err := s.taskDir(id)
+	if err != nil {
+		return "", err
+	}
+	if filepath.Base(name) != name {
+		return "", errors.New("invalid task filename")
+	}
+	return filepath.Join(dir, name), nil
+}
+
+// Lock serializes catalog mutations across CLI processes. Network calls must not
+// run while this lock is held, except the bounded launch readiness transaction.
+func (s *JSON) Lock(ctx context.Context) (func(), error) {
+	return lock(ctx, filepath.Join(s.root, "catalog.lock"), true)
+}
+func (s *JSON) BrokerLock(id task.ID) (func(), error) {
+	name, err := s.Path(id, "broker.lock")
+	if err != nil {
+		return nil, err
+	}
+	return lock(context.Background(), name, false)
+}
+func lock(ctx context.Context, name string, wait bool) (func(), error) {
+	fd, err := unix.Open(name, unix.O_CREAT|unix.O_RDWR|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0600)
+	if err != nil {
+		return nil, err
+	}
+	f := os.NewFile(uintptr(fd), name)
+	var stat unix.Stat_t
+	if err := unix.Fstat(fd, &stat); err != nil {
+		f.Close()
+		return nil, err
+	}
+	if int(stat.Uid) != os.Getuid() || stat.Mode&0077 != 0 || stat.Mode&unix.S_IFMT != unix.S_IFREG {
+		f.Close()
+		return nil, errors.New("unsafe lock file")
+	}
+	for {
+		err = unix.Flock(fd, unix.LOCK_EX|unix.LOCK_NB)
+		if err == nil {
+			return func() { _ = unix.Flock(fd, unix.LOCK_UN); _ = f.Close() }, nil
+		}
+		if !wait || (!errors.Is(err, syscall.EWOULDBLOCK) && !errors.Is(err, syscall.EAGAIN)) {
+			f.Close()
+			return nil, fmt.Errorf("task or catalog is busy: %w", err)
+		}
+		select {
+		case <-ctx.Done():
+			f.Close()
+			return nil, ctx.Err()
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+}
+
+func (s *JSON) Rename(ctx context.Context, id task.ID, name string) error {
+	r, err := s.Load(ctx, id)
+	if err != nil {
+		return err
+	}
+	r.Spec.Name = name
+	if err := r.Spec.Validate(); err != nil {
+		return err
+	}
+	target, _ := s.Path(id, "spec.json")
+	return writeJSON(target, r.Spec)
+}
+
+// Remove requires the catalog and broker locks. IDs are never reused.
+func (s *JSON) Remove(ctx context.Context, id task.ID) error {
+	if _, err := s.Load(ctx, id); err != nil {
+		return err
+	}
+	dir, _ := s.taskDir(id)
+	return os.RemoveAll(dir)
+}
+
+func (s *JSON) Log(id task.ID) (*os.File, error) {
+	name, err := s.Path(id, "output.log")
+	if err != nil {
+		return nil, err
+	}
+	return os.OpenFile(name, os.O_CREATE|os.O_APPEND|os.O_WRONLY|syscall.O_NOFOLLOW, 0600)
+}

@@ -1,0 +1,367 @@
+package terminal
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"os/signal"
+	"sync"
+	"sync/atomic"
+	"syscall"
+	"time"
+
+	"golang.org/x/sys/unix"
+	"golang.org/x/term"
+	"github.com/raywcm/mtask/internal/config"
+	"github.com/raywcm/mtask/internal/i18n"
+	"github.com/raywcm/mtask/internal/ipc"
+	"github.com/raywcm/mtask/internal/protocol"
+	"github.com/raywcm/mtask/internal/store"
+	"github.com/raywcm/mtask/internal/task"
+)
+
+type AttachResult struct {
+	Detached bool
+	ExitCode int
+}
+
+var ErrConnect = errors.New("could not attach to broker")
+
+type AttachOptions struct {
+	NoEscape bool
+	Mode     string
+}
+
+func CurrentSize(input *os.File) task.Size {
+	cols, rows, err := term.GetSize(int(input.Fd()))
+	if err != nil || rows < 1 || cols < 1 || rows > 65535 || cols > 65535 {
+		return task.Size{Rows: 24, Cols: 80}
+	}
+	return task.Size{Rows: uint16(rows), Cols: uint16(cols)}
+}
+
+// Attach owns a separately opened, pollable tty so cancellation never leaves an
+// orphaned reader competing with the next Bubble Tea program for standard input.
+func Attach(ctx context.Context, state string, record task.Record, input, output *os.File, noEscape bool) (AttachResult, error) {
+	return AttachWithOptions(ctx, state, record, input, output, AttachOptions{NoEscape: noEscape})
+}
+
+func AttachWithOptions(ctx context.Context, state string, record task.Record, input, output *os.File, options AttachOptions) (AttachResult, error) {
+	if record.Runtime == nil {
+		return AttachResult{}, errors.New("task has not started")
+	}
+	r := *record.Runtime
+	if !term.IsTerminal(int(input.Fd())) || !term.IsTerminal(int(output.Fd())) {
+		return AttachResult{}, errors.New("attach requires an interactive terminal")
+	}
+	tty, err := os.OpenFile("/dev/tty", os.O_RDWR|syscall.O_NOCTTY|syscall.O_NONBLOCK, 0)
+	if err != nil {
+		return AttachResult{}, err
+	}
+	defer tty.Close()
+	size := CurrentSize(tty)
+	repository, err := store.Open(state)
+	if err != nil {
+		return AttachResult{}, err
+	}
+	cached, _ := repository.LoadTerminalModes(r.TaskID)
+	restore := newRecovery(r, cached)
+	if err := restore.inspect(repository); err != nil {
+		return AttachResult{}, fmt.Errorf("recover terminal modes: %w", err)
+	}
+	_ = repository.SaveTerminalModes(restore.modes)
+	// Scan before taking the output subscription, so historical log size cannot
+	// make a fast live producer overflow the attach queue while we inspect it.
+	session, err := ipc.ConnectAttachment(ctx, state, r, &size, options.Mode)
+	if err != nil {
+		return AttachResult{}, fmt.Errorf("%w: %w", ErrConnect, err)
+	}
+	defer session.Close()
+	preferences, settingsErr := repository.Settings()
+	if settingsErr != nil {
+		preferences = config.Defaults()
+	}
+	locale := i18n.New(preferences.Language)
+	identity := newIdentity(record.Spec, locale, size, options.NoEscape)
+	readOnly := session.Welcome.AttachMode == protocol.AttachReadOnly
+	var sizeOwner atomic.Bool
+	// Older brokers have no size-owner field and retain the exclusive semantics.
+	sizeOwner.Store(session.Welcome.AttachMode == "" || session.Welcome.SizeOwner)
+	if options.Mode != "" && options.Mode != protocol.AttachExclusive {
+		label := locale.Text("mode_" + options.Mode)
+		identity = identity.withMode(label, size)
+	}
+	var result AttachResult
+	titleActive := false
+	err = WithRaw(tty, func() error {
+		attachCtx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		fd := int(tty.Fd())
+		if err := unix.SetNonblock(fd, true); err != nil {
+			return err
+		}
+		resize := make(chan os.Signal, 1)
+		signal.Notify(resize, syscall.SIGWINCH)
+		defer signal.Stop(resize)
+		type event struct {
+			result AttachResult
+			err    error
+		}
+		events := make(chan event, 2)
+		var wg sync.WaitGroup
+		frames := make(chan incoming, 64)
+		wg.Go(func() {
+			defer close(frames)
+			for {
+				frame, err := protocol.Read(session.Conn)
+				select {
+				case frames <- incoming{frame: frame, err: err}:
+				case <-attachCtx.Done():
+					return
+				}
+				if err != nil {
+					return
+				}
+			}
+		})
+		defer func() {
+			cancel()
+			_ = session.Close()
+			wg.Wait()
+			if restore.inspect(repository) == nil {
+				_ = repository.SaveTerminalModes(restore.modes)
+			}
+		}()
+		if err := writeTTY(attachCtx, fd, []byte(identity.start())); err != nil {
+			return err
+		}
+		titleActive = true
+		var pending []incoming
+		if session.Welcome.Replay != "initial" {
+			if err := writeTTY(attachCtx, fd, []byte(restore.prefix())); err != nil {
+				return err
+			}
+		}
+		if err := writeTTY(attachCtx, fd, []byte(identity.banner())); err != nil {
+			return err
+		}
+		if session.Welcome.Replay != "initial" {
+			if restore.fullscreen() && sizeOwner.Load() {
+				var err error
+				pending, err = repaint(attachCtx, session.Send, frames, size, 2*time.Second)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		wg.Go(func() {
+			decoder := EscapeDecoder{Disable: options.NoEscape}
+			buf := make([]byte, 32*1024)
+			for {
+				n, readErr := readTTY(attachCtx, fd, buf)
+				if n > 0 {
+					data, detach := decoder.Feed(buf[:n])
+					if len(data) > 0 && !readOnly {
+						if err := session.Send(protocol.Frame{Kind: protocol.Input, Payload: data}); err != nil {
+							events <- event{err: err}
+							return
+						}
+					}
+					if detach {
+						// Closing after selecting this event is itself a detach. Sending
+						// a frame first could race the server's EOF against this result.
+						events <- event{result: AttachResult{Detached: true}}
+						return
+					}
+				}
+				if readErr != nil {
+					events <- event{err: readErr}
+					return
+				}
+			}
+		})
+		wg.Go(func() {
+			for {
+				var next incoming
+				if len(pending) > 0 {
+					next, pending = pending[0], pending[1:]
+				} else {
+					select {
+					case <-attachCtx.Done():
+						return
+					case value, ok := <-frames:
+						if !ok {
+							return
+						}
+						next = value
+					}
+				}
+				if next.err != nil {
+					events <- event{err: fmt.Errorf("connection ended; check task status: %w", next.err)}
+					return
+				}
+				frame := next.frame
+				switch frame.Kind {
+				case protocol.Output:
+					if err := writeTTY(attachCtx, fd, frame.Payload); err != nil {
+						events <- event{err: err}
+						return
+					}
+				case protocol.Exit:
+					var exit protocol.ExitMessage
+					if err := ipc.Decode(frame.Payload, &exit); err != nil {
+						events <- event{err: err}
+						return
+					}
+					events <- event{result: AttachResult{ExitCode: exit.Code}}
+					return
+				case protocol.Error:
+					err := ipc.FrameError(frame)
+					var remote *ipc.RemoteError
+					if errors.As(err, &remote) && remote.Code == "taken_over" {
+						err = errors.New(locale.Text("taken_over"))
+					}
+					events <- event{err: err}
+					return
+				case protocol.Notice:
+					var notice protocol.NoticeMessage
+					if err := ipc.Decode(frame.Payload, &notice); err != nil {
+						events <- event{err: err}
+						return
+					}
+					switch notice.Type {
+					case "role":
+						wasOwner := sizeOwner.Swap(notice.SizeOwner)
+						if notice.SizeOwner && !wasOwner && !readOnly {
+							if err := session.Send(ipc.JSON(protocol.Resize, CurrentSize(tty))); err != nil {
+								events <- event{err: err}
+								return
+							}
+						}
+					case "refresh":
+						if !readOnly && sizeOwner.Load() && restore.inspect(repository) == nil && restore.fullscreen() {
+							redraw, err := repaint(attachCtx, session.Send, frames, CurrentSize(tty), 2*time.Second)
+							if err != nil {
+								events <- event{err: err}
+								return
+							}
+							pending = append(pending, redraw...)
+						}
+					default:
+						events <- event{err: errors.New("unexpected broker notice")}
+						return
+					}
+				case protocol.Pong:
+				default:
+					events <- event{err: errors.New("unexpected broker frame")}
+					return
+				}
+			}
+		})
+		wg.Go(func() {
+			// Also cover a resize during log inspection or the repaint handshake.
+			if sizeOwner.Load() && !readOnly {
+				_ = session.Send(ipc.JSON(protocol.Resize, CurrentSize(tty)))
+			}
+			for {
+				select {
+				case <-attachCtx.Done():
+					return
+				case <-resize:
+					if sizeOwner.Load() && !readOnly {
+						_ = session.Send(ipc.JSON(protocol.Resize, CurrentSize(tty)))
+					}
+				}
+			}
+		})
+		var failure error
+		select {
+		case e := <-events:
+			result = e.result
+			failure = e.err
+		case <-ctx.Done():
+			failure = ctx.Err()
+		}
+		return failure
+	})
+	// termios restoration must precede this ANSI cleanup. TUI will start only after
+	// all readers exit. These cover common app modes without parsing live output.
+	cleanupErr := ResetModes(output)
+	if titleActive {
+		_, titleErr := io.WriteString(output, restoreWindowTitle)
+		cleanupErr = errors.Join(cleanupErr, titleErr)
+	}
+	return result, errors.Join(err, cleanupErr)
+}
+
+func ResetModes(output io.Writer) error {
+	_, err := io.WriteString(output, "\x1b[0m\x1b[?9l\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1005l\x1b[?1006l\x1b[?1015l\x1b[?1016l\x1b[?1004l\x1b[?2004l\x1b[?1l\x1b>\x1b[4l\x1b[<u\x1b[>4;0m\x1b[?1049l\x1b[0 q\x1b[?25h")
+	return err
+}
+
+// /dev/tty does not support Go's kqueue poller on macOS. Native poll with a
+// bounded wait supports both platforms and guarantees cancellation without
+// closing the descriptor before termios has been restored.
+func readTTY(ctx context.Context, fd int, p []byte) (int, error) {
+	for {
+		if err := ctx.Err(); err != nil {
+			return 0, err
+		}
+		fds := []unix.PollFd{{Fd: int32(fd), Events: unix.POLLIN}}
+		n, err := unix.Poll(fds, 100)
+		if errors.Is(err, unix.EINTR) {
+			continue
+		}
+		if err != nil {
+			return 0, err
+		}
+		if n == 0 {
+			continue
+		}
+		count, err := unix.Read(fd, p)
+		if errors.Is(err, unix.EAGAIN) || errors.Is(err, unix.EINTR) {
+			continue
+		}
+		if count == 0 && err == nil {
+			return 0, io.EOF
+		}
+		return count, err
+	}
+}
+func writeTTY(ctx context.Context, fd int, p []byte) error {
+	deadline := time.Now().Add(2 * time.Second)
+	for len(p) > 0 {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if time.Now().After(deadline) {
+			return os.ErrDeadlineExceeded
+		}
+		fds := []unix.PollFd{{Fd: int32(fd), Events: unix.POLLOUT}}
+		n, err := unix.Poll(fds, 100)
+		if errors.Is(err, unix.EINTR) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		if n == 0 {
+			continue
+		}
+		count, err := unix.Write(fd, p)
+		if errors.Is(err, unix.EAGAIN) || errors.Is(err, unix.EINTR) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		if count <= 0 {
+			return io.ErrShortWrite
+		}
+		p = p[count:]
+	}
+	return nil
+}
