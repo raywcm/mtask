@@ -155,7 +155,7 @@ def test_cli_and_tui(h):
         # Takeover requires a second, explicit confirmation.
         os.write(fd,b'c');wait_view(fd,term,lambda text:'Connection modes' in text)
         os.write(fd,b'\x1b[A\r');wait_view(fd,term,lambda text:'y confirm' in text)
-        os.write(fd,b'\x1b');wait_view(fd,term,lambda text:'Memory' in text)
+        os.write(fd,b'\x1b');wait_view(fd,term,lambda text:'Memory' in text and 'y confirm' not in text)
         frame(owner,3,b'cancel-preserves-owner\n');output(owner,b'ECHO:cancel-preserves-owner\n')
         os.write(fd,b'c');wait_view(fd,term,lambda text:'Connection modes' in text)
         os.write(fd,b'\x1b[A\r');wait_view(fd,term,lambda text:'y confirm' in text)
@@ -207,7 +207,7 @@ def test_languages(h):
         column=term.display[row].index(readonly)
         assert term.current.buffer[row][column].reverse,'read-only must be the safe default'
         os.write(fd,b'\x1b[A\r');wait_view(fd,term,lambda text:hint in text)
-        os.write(fd,b'\x1b');wait_view(fd,term,lambda text:title not in text and 'mode-languages' in text)
+        os.write(fd,b'\x1b');wait_view(fd,term,lambda text:title not in text and hint not in text and 'mode-languages' in text)
         os.write(fd,b'q');drain(fd);assert h.join(pid)==0
     h.cli('settings','set','language','en');h.cli('stop',ref)
     print('PASS localized connection menus, safe default and takeover confirmation in five languages',flush=True)

@@ -29,6 +29,7 @@ For a race-enabled run, build to a fresh path and pass it to
 | tui_exit_regression.py | Ctrl+C/INT/TERM/HUP cleanup across five pages |
 | detach_keys_regression.py | F12, both Ctrl+B forms, standalone Ctrl+D/Esc, paste and no-escape |
 | stress.py | Concurrent health scans and broker RSS |
+| installer_test.py | Platform selection, checksums, pinned versions and failed-upgrade protection |
 
 Run a focused suite with `.venv/bin/python scripts/NAME.py ./bin/mtask`.
 The default soak uses 16 tasks for five seconds. For a longer run:

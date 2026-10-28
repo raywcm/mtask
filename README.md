@@ -5,10 +5,19 @@ disconnect, then return to them from a task list. No tmux or screen required.
 
 ![mtask demo](docs/assets/demo.gif)
 
-**Pre-release: v0.4.4-dev.** The repository is private. Public downloads and an APT
-repository are not available yet.
+## Install
 
-## Install from source
+```sh
+curl -fsSL https://github.com/raywcm/mtask/releases/latest/download/install.sh | sh
+```
+
+Installs to `~/.local/bin` after SHA-256 verification. Supports Linux and macOS
+on amd64/arm64. Add `~/.local/bin` to PATH. Existing tasks keep running on upgrade.
+See [releases](https://github.com/raywcm/mtask/releases) for archives and Deb/RPM
+packages, or [installation options](docs/installation.md) for a specific version
+or installation directory.
+
+### From source
 
 Requires Go 1.26+, Git and make. Go is not needed at runtime.
 

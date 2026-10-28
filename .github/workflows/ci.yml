@@ -24,6 +24,8 @@ jobs:
       - run: go vet ./...
       - run: go test -race -timeout 60s ./...
       - run: python3 scripts/third_party_notices.py --check
+      - name: Check release installer
+        run: python3 scripts/installer_test.py
       - run: go build -race -o bin/mtask ./cmd/mtask
       - run: python3 scripts/integration.py
       - name: Verify visible screen on reconnect

@@ -8,7 +8,7 @@ four-target builds are implemented. Remaining work:
 - More reliable screen recovery for applications that do not redraw on resize.
 - Longer concurrent-task and high-output runs, including broker failures.
 - Native Linux amd64/Intel Mac and distribution package-manager testing.
-- Public binary releases and a signed APT repository.
+- A signed APT repository.
 
 Compatibility results belong in [compatibility.md](compatibility.md). The
 reproducible test commands are in [stability.md](stability.md).

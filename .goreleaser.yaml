@@ -13,7 +13,7 @@ builds:
 archives:
   - formats: [tar.gz]
     name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
-    files: [README.md, LICENSE, THIRD_PARTY_NOTICES.md, 'licenses/**', 'docs/*.md', 'docs/archive/*.md', 'docs/assets/**']
+    files: [README.md, install.sh, LICENSE, THIRD_PARTY_NOTICES.md, 'licenses/**', 'docs/*.md', 'docs/archive/*.md', 'docs/assets/**']
 nfpms:
   - id: linux
     package_name: mtask
@@ -44,6 +44,9 @@ snapshot:
   version_template: '0.4.4-dev'
 changelog:
   disable: true
-# Public releases are disabled during development.
 release:
-  disable: true
+  github:
+    owner: raywcm
+    name: mtask
+  extra_files:
+    - glob: install.sh
