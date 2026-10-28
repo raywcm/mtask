@@ -185,9 +185,9 @@ def test_dialogs_and_names(h):
     modal(terminal,'Name already exists','work-4-2',fd=fd)
     assert len(records(h))==count+1,'race silently created an unreviewed alternative'
     os.write(fd,b'y')
-    wait_view(fd,terminal,lambda text:'work-4-2' in text and 'Name already exists' not in text)
+    wait_view(fd,terminal,lambda text:not terminal.alternate and 'work-4-2' in text and 'Name already exists' not in text)
     created=next(r for r in records(h) if r['spec']['name']=='work-4-2')
-    os.write(fd,b'\x02d');wait_view(fd,terminal,lambda text:'Memory' in text)
+    os.write(fd,b'\x02d');wait_view(fd,terminal,lambda text:terminal.alternate and 'Memory' in text)
     # Stop and delete are actual centered modals, preserving the list behind.
     os.write(fd,b's');wait_view(fd,terminal,lambda text:'Confirm stop' in text)
     modal(terminal,'Confirm stop','work-4-2',fd=fd)

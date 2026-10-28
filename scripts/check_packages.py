@@ -90,7 +90,7 @@ def main():
     for path in sorted(root.glob('*.tar.gz')):
         with tarfile.open(path) as archive:
             names={m.name for m in archive.getmembers()}
-            assert {'mtask','README.md','LICENSE','THIRD_PARTY_NOTICES.md'} <= names
+            assert {'mtask','install.sh','README.md','LICENSE','THIRD_PARTY_NOTICES.md'} <= names
             assert len([m for m in archive.getmembers() if m.name.startswith('licenses/') and m.isfile()]) == NOTICE_COUNT
             assert 'docs/archive/architecture-a0.md' in names
             assert 'docs/development-log.md' not in names
