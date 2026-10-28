@@ -107,6 +107,38 @@ func TestMonitorTypeaheadAndFailureRelease(t *testing.T) {
 	}
 }
 
+func TestCtrlEnterIgnoredWithoutLeavingMonitor(t *testing.T) {
+	for _, raw := range []string{"\x1b[13;5u", "\x1b[27;5;13~", "\x1b[13;5:2u", "\x1b[13;5:3u"} {
+		for split := 0; split <= len(raw); split++ {
+			route := &monitorInput{notify: func(a monitorAction) { t.Errorf("Ctrl+Enter produced an action: %+v", a) }}
+			route.Begin()
+			target := &monitor.Session{}
+			route.SetTarget(target)
+			route.forward([]byte(raw[:split]))
+			route.forward([]byte(raw[split:]))
+			if !route.enabled || route.target != target {
+				t.Fatal("Ctrl+Enter changed the control connection")
+			}
+			route.Stop()
+		}
+	}
+	for _, failed := range []bool{false, true} {
+		m := readyModel(t)
+		m, _ = press(m, 'v')
+		if failed {
+			m.monitorFrame.Err = os.ErrNotExist
+		}
+		for _, msg := range []tea.Msg{tea.KeyPressMsg{Code: tea.KeyEnter}, tea.KeyPressMsg{Code: tea.KeyEnter, Mod: tea.ModCtrl}, monitorAction{kind: "attach"}} {
+			next, _ := m.Update(msg)
+			m = next.(model)
+			if m.selected.Kind != "" || m.quitting || !m.monitoring {
+				t.Fatal("monitor input opened a fullscreen attachment")
+			}
+		}
+		m.closeMonitor()
+	}
+}
+
 func TestMonitorKeysCannotTriggerListActions(t *testing.T) {
 	m := readyModel(t)
 	route := &monitorInput{}

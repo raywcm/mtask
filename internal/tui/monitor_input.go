@@ -62,15 +62,13 @@ func (r *monitorInput) resetLocked() {
 		command := monitorNavigation(raw)
 		if key == 0x06 {
 			command = "search"
-		} else if key == terminal.KeyCtrlEnter {
-			command = "attach"
 		}
 		if command == "" {
 			return false
 		}
 		r.commands = append(r.commands, command)
 		return true
-	}}
+	}, Ignore: monitorIgnoredKey}
 	r.commands = nil
 }
 func (r *monitorInput) Arm(armed bool) { r.mu.Lock(); r.armed = armed; r.mu.Unlock() }
@@ -264,6 +262,20 @@ func monitorNavigation(raw []byte) string {
 		}
 	}
 	return ""
+}
+
+func monitorIgnoredKey(raw []byte, key uint16) bool {
+	if key == terminal.KeyCtrlEnter {
+		return true
+	}
+	if len(raw) > 1 && raw[0] == 0x1b {
+		var decoder uv.EventDecoder
+		n, event := decoder.Decode(raw)
+		if release, ok := event.(uv.KeyReleaseEvent); ok && n == len(raw) {
+			return release.Code == uv.KeyEnter && release.Mod&^(uv.ModCapsLock|uv.ModNumLock) == uv.ModCtrl
+		}
+	}
+	return false
 }
 
 // Preserve key events that were decoded just before v enabled the raw route.

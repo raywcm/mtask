@@ -75,7 +75,7 @@ manager for navigation.
 The session list uses a quarter of the width, capped at 28 columns; the control
 pane uses the remaining space.
 Leaving retains that size. Ctrl+F pauses input forwarding for session search;
-Ctrl+Enter leaves the TUI for fullscreen attach.
+The monitor cannot start a fullscreen attach; Enter does so from the task list.
 Repeated identical sizes are ignored. Device replies are disabled; only rendered
 cells and SGR reach the frontend. The VT is limited to 512×256 cells and about
 4 MiB of parser buffering. Only the selected preview is active.

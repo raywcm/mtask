@@ -60,7 +60,7 @@
     "history_empty": "No retained output.",
     "history_hint": "↑/↓ scroll · PgUp/PgDn page · ←/→ pan · Home/End · Esc/q back",
     "monitor": "Monitor",
-    "monitor_hint": "↑↓ switch · Esc/F12 list · Ctrl+F search · Ctrl+Enter fullscreen",
+    "monitor_hint": "↑↓ switch · Esc/F12 list · Ctrl+F search",
     "monitor_select": "Select a session",
     "monitor_unavailable": "Unable to monitor",
     "monitor_busy": "This session is in use by another terminal.",
@@ -125,7 +125,7 @@
     "monitor_retry_hint": "↑/↓ select · F5 retry · F12/Esc list",
     "search_sessions": "Search sessions",
     "search_empty": "No matching sessions",
-    "search_hint": "Type to filter · ↑↓/PgUp/PgDn select · Enter control · Ctrl+Enter fullscreen · Esc back",
+    "search_hint": "Type to filter · ↑↓/PgUp/PgDn select · Enter confirm · Esc back",
     "sessions": "sessions"
   },
   "cli": {

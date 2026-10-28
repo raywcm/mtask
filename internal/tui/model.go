@@ -300,11 +300,6 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.monitorInput.SetTarget(m.monitorSession)
 			}
 			return m, m.syncMonitor()
-		case "attach":
-			if r, ok := m.current(); ok {
-				m.selected = Selection{Kind: "attach", ID: r.Spec.ID, State: m.state()}
-				return m.quit()
-			}
 		case "back", "input-error":
 			m.monitoring = false
 			m.closeMonitor()
@@ -457,6 +452,9 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tea.KeyPressMsg:
 		k := msg.String()
+		if k == "ctrl+enter" {
+			return m, nil
+		}
 		if m.mode == "search" {
 			return m.updateSearch(msg)
 		}
@@ -499,6 +497,9 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "down", "j", "tab":
 				m.connectChoice = (m.connectChoice + 1) % 3
 			case "enter":
+				if m.monitoring {
+					return m, nil
+				}
 				if connectionModes[m.connectChoice] == protocol.AttachTakeover {
 					m.mode = "takeover"
 					m.confirmChoice = 0
@@ -515,7 +516,7 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			m.mode = ""
-			if yes {
+			if yes && !m.monitoring {
 				m.selected = m.connectionSelection()
 				return m.quit()
 			}
@@ -666,17 +667,13 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.input.SetValue("")
 					return m, m.input.Focus()
 				}
-			case "enter", "ctrl+enter":
-				if m.busy {
+			case "enter":
+				if m.busy || m.monitoring {
 					return m, nil
 				}
 				if r, ok := m.current(); ok {
 					if !active(r) {
 						return m, m.openHistory(r)
-					}
-					if k == "enter" {
-						m.monitoring = true
-						return m, m.syncMonitor()
 					}
 					m.selected = Selection{Kind: "attach", ID: r.Spec.ID, State: m.state()}
 					return m.quit()
@@ -692,6 +689,9 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.err = nil
 				m.message = ""
 				if k == "c" {
+					if m.monitoring {
+						return m, nil
+					}
 					if !active(r) {
 						m.message = m.locale().Text("finished_hint")
 						return m, nil

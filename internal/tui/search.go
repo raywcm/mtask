@@ -79,7 +79,9 @@ func (m model) updateSearch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+end":
 			m.searchCursor = last
 			return m, nil
-		case "enter", "ctrl+enter":
+		case "ctrl+enter":
+			return m, nil
+		case "enter":
 			if len(rows) == 0 {
 				return m, nil
 			}
@@ -102,11 +104,10 @@ func (m model) updateSearch(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.closeMonitor()
 				return m, m.openHistory(r)
 			}
-			if key.String() == "ctrl+enter" {
+			if !m.monitoring {
 				m.selected = Selection{Kind: "attach", ID: r.Spec.ID, State: m.state()}
 				return m.quit()
 			}
-			m.monitoring = true
 			if r.Spec.ID == m.monitorID {
 				return m, m.resumeMonitor()
 			}

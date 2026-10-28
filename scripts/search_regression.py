@@ -48,13 +48,10 @@ def main():
             until(lambda: received(h, refs[-1]) == expected)
             assert t.alternate
             for key in (b'\x1b[13;5u', b'\x1b[27;5;13~'):
-                os.write(fd, key)
-                wait_view(fd, t, lambda s: 'work-23 [' in s and 'Control' not in s)
-                os.write(fd, b'full')
-                expected += b'full'
+                os.write(fd, key+b'ignored')
+                expected += b'ignored'
                 until(lambda: received(h, refs[-1]) == expected)
-                os.write(fd, b'\x1b[24~')
-                wait_view(fd, t, lambda s: 'work-23 [' in s and 'Control' in s)
+            assert latest_size(h, refs[-1]) == (17, 54)
             # A cancelled search resumes input on the same lease and at the same size.
             offset = len(h.cli('logs', refs[-1], '--raw').stdout)
             os.write(fd, b'\x06missing')
@@ -71,8 +68,12 @@ def main():
             assert h.show(old)['runtime']['state'] == 'exited'
             os.write(fd, b'\x1b')
             wait_view(fd, t, lambda s: 'archived' in s and 'Duration' in s)
-            # Search from the Stop tab can select a running session in the monitor.
+            # Search from the list follows list Enter semantics and attaches fullscreen.
             os.write(fd, b'\x06WORK-00\r')
+            wait_view(fd, t, lambda s: 'work-00 [' in s and 'Control' not in s)
+            os.write(fd, b'\x1b[24~')
+            wait_view(fd, t, lambda s: 'Memory' in s)
+            os.write(fd, b'v')
             wait_view(fd, t, lambda s: 'work-00 [' in s and 'Control' in s)
             os.write(fd, b'\x1b[200~\x06\x1b[13;5u\x1b[201~')
             until(lambda: received(h, refs[0]) == b'\x1b[200~\x06\x1b[13;5u\x1b[201~')
@@ -83,7 +84,7 @@ def main():
             for ref, runtime in before.items():
                 assert h.show(ref)['runtime'] == runtime
             assert h.show('added')['runtime']['child_pid'] == created['runtime']['child_pid']
-            print('PASS new selects monitor control, 25-session scrolling, global name/ID/case search, same-read query, no-match/cancel/history, Ctrl+Enter encodings, literal Enter/Shift+Enter/paste, no resize on search cancel and preserved PIDs', flush=True)
+            print('PASS new selects monitor control, 25-session scrolling, global name/ID/case search, same-read query, no-match/cancel/history, ignored Ctrl+Enter encodings, literal Enter/Shift+Enter/paste, no resize on search cancel and preserved PIDs', flush=True)
         finally:
             h.cleanup()
 

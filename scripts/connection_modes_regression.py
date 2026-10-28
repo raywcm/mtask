@@ -141,7 +141,7 @@ def test_cli_and_tui(h):
         # Busy opens connection choices directly. Enter defaults to read only.
         pid,fd=h.spawn_tty();term=Terminal()
         wait_view(fd,term,lambda text:'mode-ui' in text)
-        os.write(fd,b'\x1b[13;5u')
+        os.write(fd,b'\r')
         wait_view(fd,term,lambda text:'Connection modes' in text and 'already has a controller' in text)
         os.write(fd,b'\r');wait_view(fd,term,lambda text:'Read only' in text and 'Connection modes' not in text)
         os.write(fd,b'\x02d');wait_view(fd,term,lambda text:term.alternate and 'mode-ui' in text and 'Memory' in text)

@@ -60,6 +60,7 @@ func TestSearchSelectionAndCancel(t *testing.T) {
 		t.Fatal("empty search changed the session")
 	}
 	m.input.SetValue("other")
+	m.monitoring = true
 	next, cmd := m.updateSearch(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = next.(model)
 	if !m.monitoring || m.monitorID != m.tasks[1].Spec.ID || cmd == nil || m.mode != "" {
@@ -82,5 +83,21 @@ func TestEmptyMonitorCanReturnToList(t *testing.T) {
 	m, _ = press(m, tea.KeyF12)
 	if m.monitoring || m.monitorInput.enabled {
 		t.Fatal("empty monitor captured the manager keyboard")
+	}
+}
+
+func TestSearchFromListUsesEnterToAttachAndIgnoresCtrlEnter(t *testing.T) {
+	m := readyModel(t)
+	m.openSearch()
+	m.input.SetValue("other")
+	next, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter, Mod: tea.ModCtrl})
+	m = next.(model)
+	if m.mode != "search" || m.selected.Kind != "" || m.input.Value() != "other" {
+		t.Fatal("Ctrl+Enter changed search or entered a session")
+	}
+	next, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	m = next.(model)
+	if m.selected.Kind != "attach" || m.selected.ID != m.tasks[1].Spec.ID || m.monitoring {
+		t.Fatal("search Enter did not follow list attach behavior")
 	}
 }

@@ -61,7 +61,7 @@
     "history_empty": "No hay salida guardada.",
     "history_hint": "↑/↓ desplazar · PgUp/PgDn página · ←/→ horizontal · Home/End · Esc/q volver",
     "monitor": "Monitor",
-    "monitor_hint": "↑↓ cambiar · Esc/F12 lista · Ctrl+F buscar · Ctrl+Enter pantalla completa",
+    "monitor_hint": "↑↓ cambiar · Esc/F12 lista · Ctrl+F buscar",
     "monitor_select": "Elige una sesión",
     "monitor_unavailable": "No se puede monitorizar",
     "monitor_busy": "Otra terminal está utilizando esta sesión.",
@@ -125,7 +125,7 @@
     "monitor_retry_hint": "↑/↓ elegir · F5 reintentar · F12/Esc lista",
     "search_sessions": "Buscar sesiones",
     "search_empty": "No hay sesiones coincidentes",
-    "search_hint": "Escribir para filtrar · ↑↓/PgUp/PgDn elegir · Enter controlar · Ctrl+Enter pantalla completa · Esc volver",
+    "search_hint": "Escribir para filtrar · ↑↓/PgUp/PgDn elegir · Enter confirmar · Esc volver",
     "sessions": "sesiones"
   },
   "cli": {

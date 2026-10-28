@@ -33,6 +33,8 @@ type EscapeDecoder struct {
 	PrefixCommand func([]byte) bool
 	// Command recognizes additional manager keys outside bracketed paste.
 	Command func([]byte, uint16) bool
+	// Ignore drops reserved keys without ending the current input route.
+	Ignore func([]byte, uint16) bool
 	// Remaining contains bytes after a handled command, for pane switching.
 	Remaining []byte
 	pending   uint16
@@ -114,6 +116,9 @@ func (d *EscapeDecoder) consume(raw []byte, key uint16) ([]byte, bool) {
 	}
 	if key == keyPasteStart {
 		d.pasting = true
+	}
+	if !d.pasting && d.Ignore != nil && d.Ignore(raw, key) {
+		return nil, false
 	}
 	if !d.pasting && d.pending == 0 && d.Command != nil && d.Command(raw, key) {
 		return nil, true

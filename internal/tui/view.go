@@ -127,7 +127,7 @@ func (m model) card(r task.Record, width int, selected bool) string {
 }
 func (m model) helpLine(width int) string {
 	t, p := m.locale().Text, m.palette()
-	enterLabel := t("monitor_control")
+	enterLabel := t("attach")
 	if m.tab == tabStop {
 		enterLabel = t("view_history")
 	}
@@ -252,7 +252,7 @@ func (m model) settingsView(width int) []string {
 func (m model) helpView(width int) []string {
 	t := m.locale().Text
 	p := m.palette()
-	enterAction := t("monitor_control")
+	enterAction := t("attach")
 	if m.tab == tabStop {
 		enterAction = t("view_history")
 	}
@@ -267,7 +267,6 @@ func (m model) helpView(width int) []string {
 		{"Enter", enterAction},
 		{"v", t("monitor")},
 		{"Ctrl+F", t("search_sessions")},
-		{"Ctrl+Enter", t("attach")},
 		{"c", t("connection_modes")},
 		{"n", t("new")},
 		{"s", t("stop_action")},

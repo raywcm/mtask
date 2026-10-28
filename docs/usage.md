@@ -108,13 +108,11 @@ Unix UID. Older brokers retain ordinary exclusive attach.
 
 ## Monitor and settings
 
-In the TUI, new sessions open selected in monitor control. Enter or `v` on a
-running session opens the same view. Ordinary input, Enter, ←/→, Ctrl+C/D and
-pasted text go directly to the application. **Ctrl+Enter** opens fullscreen; Esc, F12
-or Ctrl+B, d returns to the list. ↑/↓ switches tasks. List actions such
-as new, stop and rename are available after returning to the list. Ctrl+Enter
-requires a terminal that sends it distinctly from Enter; the CLI `attach` command
-always opens fullscreen. Shift+Enter has no manager action.
+In the TUI, new sessions open selected in the monitor. In the task list, Enter
+opens a session fullscreen; `v` opens the monitor. Ordinary input, Enter, ←/→,
+Ctrl+C/D and pasted text in the monitor go to the application. ↑/↓ switches
+sessions; Esc, F12 or Ctrl+B, d returns to the list. To enter a session, return
+to the list first. Ctrl+Enter is ignored throughout the manager and monitor.
 
 The monitor keeps a narrow session list beside a wide control pane. ↑/↓ and Esc
 are manager keys and never reach the application; bracketed paste stays literal.
@@ -126,8 +124,9 @@ behavior and terminal extensions.
 
 Press **Ctrl+F** in the list or monitor to search running and stopped sessions.
 Words match name, ID, directory and command without case sensitivity. ↑/↓ and
-PgUp/PgDn navigate results; Enter opens control or stopped output, Ctrl+Enter
-opens fullscreen, and Esc cancels. Search input stays out of the application.
+PgUp/PgDn navigate results; Enter confirms and Esc cancels. From the list, a
+running result opens fullscreen; from the monitor, it changes the monitored
+session. Stopped results open retained output. Search input stays out of the application.
 Cancelling resumes the same monitor without resizing. The list scrolls with the
 selection and supports PgUp/PgDn and Home/End.
 

@@ -119,17 +119,19 @@ def test_monitor(h,frontend):
         until(lambda:latest_size(h,beta)==(23,85))
         os.write(fd,b'v')
         wait_view(fd,terminal,lambda text:'STATIC-beta' in text)
-        # Ctrl+Enter opens the ordinary terminal after releasing the lease.
-        os.write(fd,b'\x1b[13;5u')
+        # Return to the list before entering the ordinary terminal.
+        os.write(fd,b'\x1b')
+        wait_view(fd,terminal,lambda text:'Memory' in text and 'STATIC-beta' not in text)
+        os.write(fd,b'\r')
         wait_view(fd,terminal,lambda text:'STATIC-beta' in text and 'alpha' not in text)
         os.write(fd,b'K')
         wait_view(fd,terminal,lambda text:'INPUT:K' in text)
         os.write(fd,b'\x02d')
-        wait_view(fd,terminal,lambda text:'alpha' in text and 'STATIC-beta' in text)
-        os.write(fd,b'\x1b[24~')
         wait_view(fd,terminal,lambda text:'Memory' in text and 'STATIC-beta' not in text)
         # Returning to monitor sets the pane size and leaves it in place on exit.
+        os.write(fd,b'v');wait_view(fd,terminal,lambda text:'STATIC-beta' in text)
         until(lambda:latest_size(h,beta)==(23,85))
+        os.write(fd,b'\x1b');wait_view(fd,terminal,lambda text:'Memory' in text)
         offset=len(h.cli('logs',beta,'--raw').stdout)
         for _ in range(3):
             os.write(fd,b'v');wait_view(fd,terminal,lambda text:'STATIC-beta' in text)
@@ -139,7 +141,7 @@ def test_monitor(h,frontend):
         assert all(tuple(map(int,size))==(23,85) for size in updates),updates
         os.write(fd,b'q');drain(fd);assert h.join(pid)==0
         for ref in [alpha,beta]:assert identity(h,ref)==before[ref]
-        print('PASS v split monitor/static cells/live refresh, direct keyboard input, pane resize, switch/size retention, occupied-session failure/retry, Ctrl+Enter attach/detach returns to monitor, stable task PIDs',flush=True)
+        print('PASS v split monitor/static cells/live refresh, direct keyboard input, pane resize, switch/size retention, occupied-session failure/retry, list Enter attach/detach returns to list, stable task PIDs',flush=True)
     finally:owner.close()
 
 

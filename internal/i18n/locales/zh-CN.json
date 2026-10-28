@@ -64,7 +64,7 @@
     "history_empty": "暂无保留的输出记录。",
     "history_hint": "↑/↓ 滚动 · PgUp/PgDn 翻页 · ←/→ 横移 · Home/End · Esc/q 返回",
     "monitor": "监控",
-    "monitor_hint": "↑↓ 切换 · Esc/F12 返回列表 · Ctrl+F 搜索 · Ctrl+Enter 全屏",
+    "monitor_hint": "↑↓ 切换 · Esc/F12 返回列表 · Ctrl+F 搜索",
     "monitor_select": "请选择会话",
     "monitor_unavailable": "无法监控",
     "monitor_busy": "此会话正被其他终端使用。",
@@ -129,7 +129,7 @@
     "monitor_retry_hint": "↑/↓ 选择 · F5 重试 · F12/Esc 返回列表",
     "search_sessions": "搜索会话",
     "search_empty": "没有匹配的会话",
-    "search_hint": "输入筛选 · ↑↓/PgUp/PgDn 选择 · Enter 控制 · Ctrl+Enter 全屏 · Esc 返回",
+    "search_hint": "输入筛选 · ↑↓/PgUp/PgDn 选择 · Enter 确认 · Esc 返回",
     "sessions": "个会话"
   },
   "cli": {

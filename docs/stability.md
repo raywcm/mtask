@@ -25,7 +25,7 @@ For a race-enabled run, build to a fresh path and pass it to
 | connection_modes_regression.py | Read-only enforcement, takeover, shared input and size ownership |
 | tmux_cli_regression.py | Session aliases/flags, concurrent reuse, quoting, exit codes and scoped kill |
 | monitor_control_regression.py | Immediate input, typeahead, Unicode/paste, switch routing and Vim editing |
-| search_regression.py | New-session monitor, long lists, search input isolation, history and Ctrl+Enter |
+| search_regression.py | New-session monitor, long lists, search input isolation, history and ignored Ctrl+Enter |
 | monitor_dialog_regression.py | Preview, resize, busy/retry, dialogs and name conflicts |
 | history_view_regression.py | History scrolling, empty output and OSC filtering |
 | history_regression.py | Expiry policies and active-task protection |
