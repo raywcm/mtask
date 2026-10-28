@@ -19,7 +19,7 @@ BINARY = b'#!/bin/sh\nprintf "MTasK v0.4.4\\n"\n'
 def fixture(root, system, machine, hash_command='sha256sum', failure=''):
     tools = root / 'tools'
     tools.mkdir()
-    for name in ['tar', 'awk', 'mktemp', 'mkdir', 'rm', 'cp', 'chmod', 'mv', hash_command]:
+    for name in ['tar', 'gzip', 'awk', 'mktemp', 'mkdir', 'rm', 'cp', 'chmod', 'mv', hash_command]:
         source = shutil.which(name)
         if not source:
             raise RuntimeError('missing test tool: ' + name)
