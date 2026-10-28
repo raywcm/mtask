@@ -419,12 +419,13 @@ def test_tui(h):
             os.write(fd,b'n');drain(fd)
             os.write(fd,b'tui-created\r');wait_output(fd,b'tui-created [')
             until(lambda:ui.show('tui-created')['health']=='online')
+            created=ui.show('tui-created')['spec']['id']
             os.write(fd,b'printf "TUI-OK\\n"\r')
             assert b'TUI-OK' in drain(fd,.3)
             os.write(fd,b'\x02d');wait_output(fd,b'F12/Ctrl+B,d')
             os.write(fd,b'\x1bOQ');drain(fd)
             os.write(fd,b'\x01\x0btui-renamed\r');drain(fd,.3)
-            until(lambda:ui.show('tui-renamed')['health']=='online')
+            until(lambda:ui.show(created)['spec']['name']=='tui-renamed')
             os.write(fd,b's');drain(fd,.2)
             assert ui.show('tui-renamed')['health']=='online'
             os.write(fd,b'\x1b');drain(fd,.15)
