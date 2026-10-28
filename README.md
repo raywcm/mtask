@@ -1,4 +1,4 @@
-# mtask
+# MTasK
 
 A terminal task manager for Linux and macOS. Keep programs running after an SSH
 disconnect, then return to them from a task list. No tmux or screen required.
