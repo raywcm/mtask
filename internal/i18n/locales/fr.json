@@ -15,6 +15,8 @@
     "running": "En cours",
     "stop": "Arrêtées",
     "settings": "Paramètres",
+    "version": "Version",
+    "detach_short": "retour",
     "loading": "Chargement des sessions…",
     "empty_running": "Aucune session en cours. Appuyez sur n pour créer un shell.",
     "empty_stop": "Aucune session arrêtée.",

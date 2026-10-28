@@ -33,6 +33,8 @@ sequences wait up to 50 ms before being forwarded.
 
 ## Manage tasks
 
+The title row shows the main shortcuts; F1/? opens the full list.
+
 ```sh
 mtask list --json
 mtask show work
@@ -87,7 +89,7 @@ dialogs and inputs keep their normal arrow keys. Monitoring uses an exclusive
 connection and the pane's size. Leaving retains that size. Occupied or unavailable
 tasks display “Unable to monitor.”
 
-The Settings tab opens for editing with Enter, or directly with `,`.
+Settings shows the installed version. Open the editor with Enter or `,`.
 ↑/↓ selects a field, ←/→ changes it, Enter saves, Esc cancels. Tab switches tabs
 and discards unsaved changes.
 

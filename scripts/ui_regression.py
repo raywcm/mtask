@@ -35,11 +35,12 @@ def main():
             done=h.create('completed-work','/bin/sh','-c','exit 0');h.finished(done)
             pid,fd=h.spawn_tty();terminal=Terminal()
             text=wait_view(fd,terminal,lambda text:'live-work' in text and 'Memory' in text)
-            assert 'MTasK' in text and h.cli('--version').stdout.decode().strip().split()[-1] in text
+            version=h.cli('--version').stdout.decode().strip().split()[-1]
+            assert 'MTasK' in text and version not in text
             assert live[:8] in text and live not in text
             assert 'completed-work' not in text
-            shortcut_rows=[row for row in terminal.display if all(key in row for key in ('Enter','F2','Del','F5','F1/?','q'))]
-            assert len(shortcut_rows)==1, 'shortcuts must share one row'
+            shortcut_rows=[row for row in terminal.display if all(key in row for key in ('MTasK','Enter','F12/Ctrl+B,d','?','q'))]
+            assert len(shortcut_rows)==1 and shortcut_rows[0]==terminal.display[0], 'shortcuts must share the brand row'
             selected=next(i for i,row in enumerate(terminal.display) if 'live-work' in row)
             row=terminal.display[selected].strip()
             assert row.startswith('│') and row.endswith('│') and '┌' not in text and '┘' not in text, 'selection must occupy one terminal row'
@@ -67,6 +68,7 @@ def main():
             wait_view(fd,terminal,lambda text:'live-work' in text and 'Keyboard shortcuts' not in text)
             os.write(fd,b'\x1b[C\x1b[C') # Running -> Stop -> Settings
             text=wait_view(fd,terminal,lambda text:'Language' in text and 'Default tab' in text and 'Enter edit' in text)
+            assert version in text and version not in terminal.display[0], 'version belongs in settings'
             tab_row=next(i for i,row in enumerate(terminal.display) if all(label in row for label in ('Running','Stop','Settings')))
             tab_x=terminal.display[tab_row].index('Settings')
             assert terminal.current.buffer[tab_row][tab_x].reverse, 'settings tab was not selected'

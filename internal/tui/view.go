@@ -38,8 +38,11 @@ func (m model) palette() palette {
 }
 func (m model) header(width int) string {
 	p := m.palette()
-	brand := p.accent.Bold(true).Render("MTasK") + "  " + p.muted.Render("v"+strings.TrimPrefix(m.version, "v"))
-	return ansi.Truncate(brand, width, "…")
+	brand := p.accent.Bold(true).Render("MTasK")
+	if width <= 7 || m.tab == tabSettings || m.mode != "" || m.monitoring {
+		return ansi.Truncate(brand, width, "…")
+	}
+	return brand + "  " + m.helpLine(width-7)
 }
 func (m model) tabs(width int) string {
 	p := m.palette()
@@ -128,29 +131,23 @@ func (m model) helpLine(width int) string {
 	if m.tab == tabStop {
 		enterLabel = t("view_history")
 	}
-	bindings := [][2]string{{"←/→", t("tabs_short")}, {"↑/↓", t("select")}, {"Enter", enterLabel}, {"v", t("monitor")}, {"c", t("connection_modes")}, {"n", t("new")}, {"s", t("stop_action")}, {"F2", t("rename")}, {"Del", t("delete")}, {"F5", t("refresh")}, {"F1/?", t("help")}, {"q", t("quit")}}
-	items, keys := []string{}, []string{}
+	bindings := [][2]string{{"←→", t("tabs_short")}, {"↑↓", t("select")}, {"Enter", enterLabel}, {"n", t("new")}, {"F12/Ctrl+B,d", t("detach_short")}, {"?", t("help")}, {"q", t("quit")}}
+	items := []string{}
 	for _, binding := range bindings {
 		items = append(items, p.accent.Render(binding[0])+" "+p.muted.Render(binding[1]))
-		key := p.accent.Render(binding[0])
-		if binding[0] == "Enter" && m.tab == tabStop {
-			key += " " + p.muted.Render(t("view_history"))
-		}
-		keys = append(keys, key)
 	}
-	for _, separator := range []string{" · ", "  ", " "} {
-		line := strings.Join(items, separator)
-		if ansi.StringWidth(line) <= width {
-			return line
-		}
-	}
-	// Keep every action visible on ordinary narrow terminals. Full descriptions
-	// stay available in F1/?; never wrap the footer into a second line.
-	line := strings.Join(keys, " ")
+	line := strings.Join(items, " ")
 	if ansi.StringWidth(line) <= width {
 		return line
 	}
-	return ansi.Truncate(p.muted.Render("↑/↓ Enter F1/? q"), width, "…")
+	// Keep the two detach shortcuts visible on narrower terminals. The full
+	// action list remains available through F1/?.
+	for _, compact := range []string{"←→ ↑↓ Enter n F12/Ctrl+B,d ↩ ? q", "F12/Ctrl+B,d ↩ ? q"} {
+		if ansi.StringWidth(compact) <= width {
+			return p.muted.Render(compact)
+		}
+	}
+	return ansi.Truncate(p.muted.Render("? "+t("help")), width, "…")
 }
 func (m model) detail(width int) string {
 	r, ok := m.current()
@@ -193,8 +190,7 @@ func (m model) status(width int) string {
 }
 func (m model) footer(width int) []string {
 	p := m.palette()
-	t := m.locale().Text
-	lines := []string{"", p.muted.Render(m.detail(width)), m.status(width), m.helpLine(width), p.muted.Render(ansi.Truncate(t("detach_hint"), width, "…"))}
+	lines := []string{"", p.muted.Render(m.detail(width)), m.status(width)}
 	return lines
 }
 func (m model) retentionLabel(seconds int64) string {
@@ -229,7 +225,8 @@ func (m model) settingsView(width int) []string {
 		on = t("on")
 	}
 	options := [][2]string{{t("language"), language}, {t("theme"), t(m.draft.Theme)}, {t("interval"), m.retentionLabel(int64(m.draft.RefreshSeconds))}, {t("resources"), on}, {t("default_tab"), t(m.draft.DefaultTab)}, {t("auto_delete"), m.retentionLabel(m.draft.HistoryRetentionSeconds)}}
-	lines := []string{m.header(width), "", m.tabs(width), p.muted.Render(strings.Repeat("─", width)), ""}
+	version := t("version") + "  v" + strings.TrimPrefix(m.version, "v")
+	lines := []string{m.header(width), "", m.tabs(width), p.muted.Render(strings.Repeat("─", width)), p.muted.Render(version), ""}
 	labelWidth := min(22, max(10, width/2))
 	valueWidth := max(1, width-labelWidth-5)
 	visible := max(1, m.height-len(lines)-2)

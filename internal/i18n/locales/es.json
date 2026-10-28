@@ -15,6 +15,8 @@
     "running": "En ejecución",
     "stop": "Detenidas",
     "settings": "Ajustes",
+    "version": "Versión",
+    "detach_short": "volver",
     "loading": "Cargando sesiones…",
     "empty_running": "No hay sesiones en ejecución. Pulsa n para crear una shell.",
     "empty_stop": "No hay sesiones detenidas.",

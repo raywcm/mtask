@@ -15,6 +15,8 @@
     "running": "Running",
     "stop": "Stop",
     "settings": "Settings",
+    "version": "Version",
+    "detach_short": "back",
     "loading": "Loading sessions…",
     "empty_running": "No running sessions. Press n to start a shell.",
     "empty_stop": "No stopped sessions.",

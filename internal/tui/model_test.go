@@ -159,8 +159,8 @@ func TestSelectedSingleLineAndColumnsFitCJKViewport(t *testing.T) {
 	if !strings.Contains(card, "\x1b[1;7m") && !strings.Contains(card, "\x1b[7m") {
 		t.Fatalf("selection not inverted: %q", card)
 	}
-	if !strings.Contains(ansi.Strip(m.View().Content), "MTasK  v0.2.0-test") {
-		t.Fatal("missing branded version header")
+	if view := ansi.Strip(m.View().Content); !strings.Contains(view, "MTasK") || strings.Contains(view, "v0.2.0-test") {
+		t.Fatal("main header should show the brand and shortcuts without the version")
 	}
 }
 func TestSettingsPreviewSaveAndCancel(t *testing.T) {
@@ -457,7 +457,7 @@ func TestSingleLineHelpAndAllLanguages(t *testing.T) {
 			}
 		}
 		full := ansi.Strip(m.helpLine(500))
-		for _, key := range []string{"←/→", "↑/↓", "Enter", "F2", "Del", "F5", "F1/?", "q"} {
+		for _, key := range []string{"←→", "↑↓", "Enter", "n", "F12/Ctrl+B,d", "?", "q"} {
 			if !strings.Contains(full, key) {
 				t.Fatalf("%s help lost %s", option.Code, key)
 			}
@@ -467,6 +467,9 @@ func TestSingleLineHelpAndAllLanguages(t *testing.T) {
 			t.Fatal("header/setting language name wrong", option.Code)
 		}
 		view := ansi.Strip(m.View().Content)
+		if !strings.Contains(view, "v0.2.0-test") {
+			t.Fatal("version missing from settings")
+		}
 		if strings.Contains(view, "RSS") || strings.Contains(view, "metrics_hint") || strings.Contains(view, "100%") {
 			t.Fatal("technical metrics explanation still shown")
 		}

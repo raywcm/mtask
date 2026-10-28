@@ -19,6 +19,8 @@
     "running": "运行中",
     "stop": "已停止",
     "settings": "设置",
+    "version": "版本",
+    "detach_short": "返回",
     "loading": "正在加载会话…",
     "empty_running": "暂无运行中的会话，按 n 新建 Shell。",
     "empty_stop": "暂无已停止的会话。",
