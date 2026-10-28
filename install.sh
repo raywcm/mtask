@@ -53,7 +53,7 @@ fi
 
 download() {
   curl --fail --silent --show-error --location --retry 3 \
-    --connect-timeout 15 --max-time 180 --proto '=https' --proto-redir '=https' "$@"
+    --connect-timeout 15 --max-time 600 --proto '=https' --proto-redir '=https' "$@"
 }
 if [ "$version" = latest ]; then
   url=$(download --output /dev/null --write-out '%{url_effective}' "$repo/releases/latest") || fail 'cannot find the latest release'
