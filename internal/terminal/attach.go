@@ -12,14 +12,14 @@ import (
 	"syscall"
 	"time"
 
-	"golang.org/x/sys/unix"
-	"golang.org/x/term"
 	"github.com/raywcm/mtask/internal/config"
 	"github.com/raywcm/mtask/internal/i18n"
 	"github.com/raywcm/mtask/internal/ipc"
 	"github.com/raywcm/mtask/internal/protocol"
 	"github.com/raywcm/mtask/internal/store"
 	"github.com/raywcm/mtask/internal/task"
+	"golang.org/x/sys/unix"
+	"golang.org/x/term"
 )
 
 type AttachResult struct {
@@ -160,10 +160,22 @@ func AttachWithOptions(ctx context.Context, state string, record task.Record, in
 		wg.Go(func() {
 			decoder := EscapeDecoder{Disable: options.NoEscape}
 			buf := make([]byte, 32*1024)
+			var deadline time.Time
 			for {
-				n, readErr := readTTY(attachCtx, fd, buf)
-				if n > 0 {
-					data, detach := decoder.Feed(buf[:n])
+				n, readErr := readTTYUntil(attachCtx, fd, buf, deadline)
+				var data []byte
+				var detach bool
+				if errors.Is(readErr, os.ErrDeadlineExceeded) {
+					data = decoder.flushEscape()
+					readErr = nil
+				} else if n > 0 {
+					data, detach = decoder.Feed(buf[:n])
+				}
+				deadline = time.Time{}
+				if len(decoder.escape) > 0 {
+					deadline = time.Now().Add(50 * time.Millisecond)
+				}
+				if len(data) > 0 || detach {
 					if len(data) > 0 && !readOnly {
 						if err := session.Send(protocol.Frame{Kind: protocol.Input, Payload: data}); err != nil {
 							events <- event{err: err}
@@ -306,12 +318,24 @@ func ResetModes(output io.Writer) error {
 // bounded wait supports both platforms and guarantees cancellation without
 // closing the descriptor before termios has been restored.
 func readTTY(ctx context.Context, fd int, p []byte) (int, error) {
+	return readTTYUntil(ctx, fd, p, time.Time{})
+}
+
+func readTTYUntil(ctx context.Context, fd int, p []byte, deadline time.Time) (int, error) {
 	for {
 		if err := ctx.Err(); err != nil {
 			return 0, err
 		}
+		wait := 100
+		if !deadline.IsZero() {
+			remaining := time.Until(deadline)
+			if remaining <= 0 {
+				return 0, os.ErrDeadlineExceeded
+			}
+			wait = min(wait, max(1, int((remaining+time.Millisecond-1)/time.Millisecond)))
+		}
 		fds := []unix.PollFd{{Fd: int32(fd), Events: unix.POLLIN}}
-		n, err := unix.Poll(fds, 100)
+		n, err := unix.Poll(fds, wait)
 		if errors.Is(err, unix.EINTR) {
 			continue
 		}

@@ -13,7 +13,7 @@
     "legacy_detach_hint": "兼容旧按键：Ctrl+] 然后按 d",
     "literal_prefix_hint": "连按两次 Ctrl+B 可向应用发送 Ctrl+B",
     "help_close_hint": "Esc / q / F1 / ? 返回当前标签",
-    "attach_identity_hint": "Ctrl+B 然后按 d 断开",
+    "attach_identity_hint": "F12 或 Ctrl+B 后按 d / Ctrl+D 断开",
     "attach_no_escape_hint": "关闭终端可断开",
     "stop_before_delete": "请先停止会话，再在“已停止”标签中删除。",
     "exit_code": "退出码",
@@ -38,7 +38,7 @@
     "delete": "删除",
     "refresh": "刷新",
     "quit": "退出",
-    "detach_hint": "Ctrl+B 然后按 d 返回列表",
+    "detach_hint": "F12 或 Ctrl+B 后按 d / Ctrl+D 返回列表",
     "working": "处理中…",
     "error": "错误",
     "saved": "设置已保存",
@@ -133,7 +133,6 @@
     "Independent terminal task manager": "独立终端任务管理器",
     "Start a persistent task (default: your shell)": "启动持久会话（默认使用 Shell）",
     "List tasks and live broker health": "列出会话及实时状态",
-    "Enter a task; Ctrl+B then d detaches": "进入会话；Ctrl+B 然后按 d 断开连接",
     "Inspect task, process identity, exit status and health": "查看会话、进程、退出结果及状态",
     "Stop the task session and wait for its exit": "停止会话并等待退出",
     "Rename a task": "重命名会话",
@@ -149,11 +148,12 @@
     "working directory": "工作目录",
     "start in background": "在后台启动",
     "start in background and print JSON": "在后台启动并输出 JSON",
-    "forward every input byte, including Ctrl+B d": "原样转发所有输入字节，包括 Ctrl+B d",
     "include original terminal control bytes": "保留原始终端控制字节",
     "follow output until task exit": "跟随输出直至会话结束",
     "last N bytes (0 means all retained output)": "最后 N 字节（0 表示所有保留的输出）",
     "include session CPU and memory samples": "附带会话 CPU 和内存采样",
-    "Help about any command": "查看命令帮助"
+    "Help about any command": "查看命令帮助",
+    "Enter a task; F12 detaches": "进入会话；F12 断开连接",
+    "forward every input byte, including detach keys": "原样转发所有输入字节，包括断开快捷键"
   }
 }

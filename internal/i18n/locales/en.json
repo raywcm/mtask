@@ -9,7 +9,7 @@
     "legacy_detach_hint": "Legacy alias: Ctrl+] then d",
     "literal_prefix_hint": "Press Ctrl+B twice to send a literal Ctrl+B",
     "help_close_hint": "Esc / q / F1 / ? returns to the current tab",
-    "attach_identity_hint": "Ctrl+B then d to detach",
+    "attach_identity_hint": "F12 or Ctrl+B then d / Ctrl+D to detach",
     "attach_no_escape_hint": "Close terminal to detach",
     "stop_before_delete": "Stop the session first, then delete it from Stop.",
     "exit_code": "exit",
@@ -34,7 +34,7 @@
     "delete": "delete",
     "refresh": "refresh",
     "quit": "quit",
-    "detach_hint": "Ctrl+B then d returns to the list",
+    "detach_hint": "F12 or Ctrl+B then d / Ctrl+D returns to the list",
     "working": "Working…",
     "error": "Error",
     "saved": "Settings saved",
@@ -129,7 +129,6 @@
     "Independent terminal task manager": "Independent terminal task manager",
     "Start a persistent task (default: your shell)": "Start a persistent task (default: your shell)",
     "List tasks and live broker health": "List tasks and live broker health",
-    "Enter a task; Ctrl+B then d detaches": "Enter a task; Ctrl+B then d detaches",
     "Inspect task, process identity, exit status and health": "Inspect task, process identity, exit status and health",
     "Stop the task session and wait for its exit": "Stop the task session and wait for its exit",
     "Rename a task": "Rename a task",
@@ -145,11 +144,12 @@
     "working directory": "working directory",
     "start in background": "start in background",
     "start in background and print JSON": "start in background and print JSON",
-    "forward every input byte, including Ctrl+B d": "forward every input byte, including Ctrl+B d",
     "include original terminal control bytes": "include original terminal control bytes",
     "follow output until task exit": "follow output until task exit",
     "last N bytes (0 means all retained output)": "last N bytes (0 means all retained output)",
     "include session CPU and memory samples": "include session CPU and memory samples",
-    "Help about any command": "Help about any command"
+    "Help about any command": "Help about any command",
+    "Enter a task; F12 detaches": "Enter a task; F12 detaches",
+    "forward every input byte, including detach keys": "forward every input byte, including detach keys"
   }
 }

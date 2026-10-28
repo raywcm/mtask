@@ -32,8 +32,9 @@ def deb(package):
                 members={m.name.lstrip('./'):m for m in archive.getmembers()}
                 assert members['usr/bin/mtask'].mode&0o777==0o755
                 assert 'usr/share/doc/mtask/docs/usage.md' in members
+                assert 'usr/share/doc/mtask/docs/development-log.md' not in members
+                assert 'usr/share/doc/mtask/README.zh-CN.md' not in members
                 assert 'usr/share/doc/mtask/LICENSE' in members
-                assert 'usr/share/doc/mtask/README.zh-CN.md' in members
                 assert 'usr/share/doc/mtask/THIRD_PARTY_NOTICES.md' in members
                 assert len([n for n in members if n.startswith('usr/share/doc/mtask/licenses/') and members[n].isfile()]) == NOTICE_COUNT
                 assert 'usr/share/doc/mtask/docs/archive/architecture-a0.md' in members
@@ -72,7 +73,9 @@ def rpm(package):
         offset=(start+size+3)//4*4
         if name=='TRAILER!!!':break
     assert found
-    assert {'usr/share/doc/mtask/LICENSE','usr/share/doc/mtask/THIRD_PARTY_NOTICES.md','usr/share/doc/mtask/README.zh-CN.md'} <= names
+    assert {'usr/share/doc/mtask/LICENSE','usr/share/doc/mtask/THIRD_PARTY_NOTICES.md'} <= names
+    assert 'usr/share/doc/mtask/docs/development-log.md' not in names
+    assert 'usr/share/doc/mtask/README.zh-CN.md' not in names
     assert len([n for n in names if n.startswith('usr/share/doc/mtask/licenses/')]) == NOTICE_COUNT
 
 
@@ -87,10 +90,11 @@ def main():
     for path in sorted(root.glob('*.tar.gz')):
         with tarfile.open(path) as archive:
             names={m.name for m in archive.getmembers()}
-            assert {'mtask','README.md','README.zh-CN.md','LICENSE','THIRD_PARTY_NOTICES.md'} <= names
+            assert {'mtask','README.md','LICENSE','THIRD_PARTY_NOTICES.md'} <= names
             assert len([m for m in archive.getmembers() if m.name.startswith('licenses/') and m.isfile()]) == NOTICE_COUNT
             assert 'docs/archive/architecture-a0.md' in names
-            assert 'mtask 开发计划.md' in names
+            assert 'docs/development-log.md' not in names
+            assert 'README.zh-CN.md' not in names
         checked+=1
     assert checked==8,checked
     print('PASS 8 artifacts: archives, Deb/RPM names, modes, architectures, ELF payloads, MIT/original dependency notices and checksums')

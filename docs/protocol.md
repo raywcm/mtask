@@ -1,59 +1,55 @@
-# 本地 Broker 协议 v1
+# Broker protocol v1
 
-更新：2026-10-28。初始草案保存在 [A0 存档](archive/protocol-a0.md)。
+One Unix stream socket per task. Both peers verify UID. Hello must arrive within
+two seconds and match the task and broker instance IDs.
 
-## 帧格式
+## Frame
 
-```text
-0       2     ASCII "MT"
-2       1     version = 1
-3       1     kind
-4       4     payload_length，uint32 big endian
-8       N     payload
-```
+| Offset | Bytes | Field |
+| --- | --- | --- |
+| 0 | 2 | ASCII MT |
+| 2 | 1 | Version: 1 |
+| 3 | 1 | Message kind |
+| 4 | 4 | Payload length, big-endian uint32 |
+| 8 | N | Payload |
 
-Input/Output 载荷为原始字节，最多 64 KiB。其他载荷为 UTF-8 JSON 或空字节，最多 8 KiB。解码先验证长度再分配；完整帧的编码用同一写锁，支持短写。非法魔数/版本/类型、超限和截断使连接关闭，不扫描重新同步。写入出错后不能重试半帧。
+Input/Output carry raw bytes, at most 64 KiB. Other payloads are UTF-8 JSON or
+empty, at most 8 KiB. Invalid or truncated frames close the connection. Writes
+are serialized; a partly written frame is not retried.
 
-## 消息
-
-| kind | 名称 | 方向 | 载荷 |
+| Kind | Message | Direction | Payload |
 | --- | --- | --- | --- |
-| 1 | Hello | C → B | task_id、instance_id、mode、可选 size/attach_mode/capabilities |
-| 2 | Welcome | B → C | task_id、instance_id、replay；可选 attach_mode/size_owner/size/capabilities |
-| 3 | Input | C → B | 原始输入，仅仍持有控制权的 attach |
-| 4 | Output | B → C | 原始 PTY 输出，仅 attach |
-| 5 | Resize | C → B | rows/cols，非零 uint16，仅尺寸主控生效 |
-| 6 | Detach | C → B | 空，释放连接 |
-| 7 | Exit | B → C | code、可选 signal |
-| 8 | Error | B → C | code、message；随后关闭 |
-| 9 | Ping | C → B | 空 |
-| 10 | Pong | B → C | 当前 Runtime JSON |
-| 11 | Stop | C → B | 空，幂等停止请求，只读 attach 不可用 |
-| 12 | Notice | B → C | type: role/refresh，role 带 size_owner；仅协商后的新客户端 |
+| 1 | Hello | Client → broker | task_id, instance_id, mode, optional size/attach_mode/capabilities |
+| 2 | Welcome | Broker → client | IDs, replay, optional mode/size owner/size/capabilities |
+| 3 | Input | Client → broker | Raw bytes; writable attach only |
+| 4 | Output | Broker → client | Raw PTY bytes |
+| 5 | Resize | Client → broker | rows/cols, nonzero uint16; size owner only |
+| 6 | Detach | Client → broker | Empty; release connection |
+| 7 | Exit | Broker → client | code, optional signal |
+| 8 | Error | Broker → client | code, message; then close |
+| 9 | Ping | Client → broker | Empty |
+| 10 | Pong | Broker → client | Runtime JSON |
+| 11 | Stop | Client → broker | Empty; idempotent request |
+| 12 | Notice | Broker → client | role or refresh; negotiated clients only |
 
-控制 JSON 允许新增未知字段以兼容扩展；拒绝第二个 JSON 值。消息必需字段、身份、模式和尺寸另外验证。应用输出绝不进入 JSON 字符串。
+## Modes and compatibility
 
-## 握手与状态机
+`mode` is control or attach. Control permits Ping/Stop/Detach and receives no
+application output. Attach requires a size; `attach_mode` defaults to exclusive.
+Takeover revokes controllers but keeps readers; shared adds a writer; readonly
+rejects Input/Resize/Stop. The oldest connected controller owns the PTY size.
 
-1. 接受连接后验证 peer UID 与当前 UID 相同；客户端也验证服务端 UID。
-2. 首帧必须在 2 秒内为有效 Hello。task_id 和 instance_id 必须匹配 Broker，避免旧快照误连新实例。
-3. mode 为 control 或 attach。attach 提供有效尺寸；attach_mode 缺省 exclusive，已有控制端时返回 busy。takeover 撤销其他全部控制端并保留只读端；readonly 只订阅输出；shared 加入输入控制。非默认方式必须声明 attach-modes-v1。control 不取得输入权。
-4. 只有新尺寸主控会同步尺寸；Welcome 告知实际尺寸、主控归属与能力，再启动 Output/Notice 转发。新旁观端请求主控协作重绘。失败时释放该连接的租约。
-5. 可输入 attach 发送 Input/Resize/Detach/Ping/Stop；非主控的合法 Resize 忽略。readonly 仅允许 Detach/Ping，Input/Resize/Stop 返回 read_only。control 只允许 Ping/Stop/Detach。其他类型、方向不合法和重复 Hello 返回 invalid_request。
-6. Stop 将请求交给 supervisor 并返回 Pong。Pong 可能仍为 running，因为请求与状态转换并发；客户端继续查询或等待 Exit。
-7. EOF 与 Detach 只释放客户端，不停止任务。mtask 前端的主动 detach 通过关闭连接完成，避免服务器 EOF 抢在本地 detach 结果之前。
-8. 正常退出时先提交状态，再尽量排空输出并发送 Exit，关闭连接。没收到 Exit 的 EOF 代表连接丢失，不能推断应用成功结束。
+Non-default modes require `attach-modes-v1`. Clients first probe through control,
+then request attach and verify the acknowledged mode. Older clients receive no
+Notice frames. Unknown JSON fields allow optional extensions; invalid required
+fields or a second JSON value are rejected.
 
-每 Broker 总连接数上限 32；control 空闲读取上限 30 秒；写入截止时间 2 秒。慢 attach 输出队列溢出会主动关闭连接，不能为发送错误消息再无限等待。
+EOF and Detach leave the task running. Stop returns Pong before completion;
+clients may poll or await Exit. EOF without Exit does not determine task success.
+At most 32 connections are allowed; idle control reads expire after 30 seconds.
+Socket writes have a two-second deadline and slow subscribers are disconnected.
 
-错误码使用 busy、identity_mismatch、invalid_request、internal、slow_client、read_only、taken_over。客户端能力探测可返回本地错误 unsupported_attach_mode。帧版本错误可能直接关闭，客户端呈现协议/连接错误。错误文本不主动包含环境变量。
-
-## 版本与恢复
-
-协议版本和磁盘 schema 版本独立，当前均为 1。新的 spec.size、spec.capture_initial 和 record.health 字段不改变原有字段含义；旧任务缺少初始尺寸时使用 24×80。
-
-重新连接的 replay 为 none：得到原进程后续输出，尺寸和 SIGWINCH 帮助支持的应用重绘。新建前台任务可在首次连接时使用 initial，交付最多 2 MiB 的启动字节，确保提示符或终端查询不会因启动握手而丢失；首次连接之后不再回放。客户端可在连接边界从日志提取白名单模式并生成有限的恢复控制；不把历史日志原样注入终端。全屏重绘使用现有 v1 Resize 帧，临时缩小后恢复尺寸，因此兼容已有 Broker。协议不提供远程 TCP、自动历史 ANSI 回放或完整 VT 屏幕恢复。
-
-## 连接模式协商
-
-新前端在请求非默认方式前，先建立 control 连接，检查 Welcome.capabilities 包含 attach-modes-v1 后关闭，再建立指定方式的 attach，并核对 Welcome.attach_mode 的回执。探测失败不尝试连接降级。旧 v1 前端的 Hello 没有该能力声明，新 Broker 不向它发送 Notice，保留原独占连接和帧行为。尺寸主控断开后按仍在线控制端的加入顺序转交，向新客户端发送 role；只读端从不自动提升为控制端。
+Reconnect uses `replay: none`. A newly created foreground task may receive
+`initial`, with up to 2 MiB of startup output once. Recovery uses existing Resize
+frames; screen snapshots and remote TCP are not part of v1. Disk schema and
+protocol versions evolve independently.

@@ -9,7 +9,7 @@
     "legacy_detach_hint": "Ancien raccourci : Ctrl+] puis d",
     "literal_prefix_hint": "Appuyez deux fois sur Ctrl+B pour envoyer Ctrl+B à l’application",
     "help_close_hint": "Esc / q / F1 / ? revient à l’onglet actuel",
-    "attach_identity_hint": "Ctrl+B puis d pour se détacher",
+    "attach_identity_hint": "F12 ou Ctrl+B puis d / Ctrl+D pour se détacher",
     "attach_no_escape_hint": "Fermez le terminal pour vous détacher",
     "stop_before_delete": "Arrêtez la session, puis supprimez-la depuis « Arrêtées ».",
     "exit_code": "sortie",
@@ -35,7 +35,7 @@
     "delete": "supprimer",
     "refresh": "actualiser",
     "quit": "quitter",
-    "detach_hint": "Ctrl+B puis d revient à la liste",
+    "detach_hint": "F12 ou Ctrl+B puis d / Ctrl+D revient à la liste",
     "working": "Traitement…",
     "error": "Erreur",
     "saved": "Paramètres enregistrés",
@@ -129,7 +129,6 @@
     "Independent terminal task manager": "Gestionnaire indépendant de tâches de terminal",
     "Start a persistent task (default: your shell)": "Démarrer une tâche persistante (par défaut, votre shell)",
     "List tasks and live broker health": "Lister les tâches et l’état de connexion du courtier",
-    "Enter a task; Ctrl+B then d detaches": "Ouvrir une tâche ; Ctrl+B puis d pour se détacher",
     "Inspect task, process identity, exit status and health": "Examiner la tâche, le processus, le résultat et la connexion",
     "Stop the task session and wait for its exit": "Arrêter la session de la tâche et attendre sa fin",
     "Rename a task": "Renommer une tâche",
@@ -145,11 +144,12 @@
     "working directory": "répertoire de travail",
     "start in background": "démarrer en arrière-plan",
     "start in background and print JSON": "démarrer en arrière-plan et afficher le JSON",
-    "forward every input byte, including Ctrl+B d": "transmettre toute la saisie, y compris Ctrl+B d",
     "include original terminal control bytes": "inclure les codes de contrôle du terminal d’origine",
     "follow output until task exit": "suivre la sortie jusqu’à la fin de la tâche",
     "last N bytes (0 means all retained output)": "les N derniers octets (0 = toute la sortie conservée)",
     "include session CPU and memory samples": "inclure les mesures CPU et mémoire de la session",
-    "Help about any command": "Aide sur les commandes"
+    "Help about any command": "Aide sur les commandes",
+    "Enter a task; F12 detaches": "Ouvrir une tâche ; F12 pour se détacher",
+    "forward every input byte, including detach keys": "transmettre toute la saisie, y compris les raccourcis de détachement"
   }
 }

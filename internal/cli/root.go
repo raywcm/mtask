@@ -9,8 +9,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/spf13/cobra"
-	"golang.org/x/term"
 	"github.com/raywcm/mtask/internal/config"
 	"github.com/raywcm/mtask/internal/daemon"
 	historycleanup "github.com/raywcm/mtask/internal/history"
@@ -21,9 +19,11 @@ import (
 	"github.com/raywcm/mtask/internal/task"
 	"github.com/raywcm/mtask/internal/terminal"
 	"github.com/raywcm/mtask/internal/tui"
+	"github.com/spf13/cobra"
+	"golang.org/x/term"
 )
 
-var Version = "0.4.3-dev"
+var Version = "0.4.4-dev"
 
 type ExitError struct{ Code int }
 
@@ -218,7 +218,7 @@ func NewRoot() *cobra.Command {
 	create.Flags().BoolVar(&newJSON, "json", false, "start in background and print JSON")
 	root.AddCommand(create)
 	var noEscape, takeover, readOnly, shared bool
-	attach := &cobra.Command{Use: "attach TASK", Aliases: []string{"a"}, Short: "Enter a task; Ctrl+B then d detaches", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
+	attach := &cobra.Command{Use: "attach TASK", Aliases: []string{"a"}, Short: "Enter a task; F12 detaches", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
 		m, err := open()
 		if err != nil {
 			return err
@@ -255,7 +255,7 @@ func NewRoot() *cobra.Command {
 		}
 		return err
 	}}
-	attach.Flags().BoolVar(&noEscape, "no-escape", false, "forward every input byte, including Ctrl+B d")
+	attach.Flags().BoolVar(&noEscape, "no-escape", false, "forward every input byte, including detach keys")
 	attach.Flags().BoolVar(&takeover, "takeover", false, "disconnect existing controllers and take control")
 	attach.Flags().BoolVar(&readOnly, "read-only", false, "watch output without sending input or changing terminal size")
 	attach.Flags().BoolVar(&shared, "shared", false, "join the session with shared input control")

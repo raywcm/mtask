@@ -22,7 +22,7 @@ func TestSessionIdentityShowsNameShortIDAndLocalizedHint(t *testing.T) {
 		t.Fatal("title must be saved before setting it")
 	}
 	noEscape := newIdentity(spec, i18n.New("en"), task.Size{Cols: 100, Rows: 24}, true)
-	if strings.Contains(noEscape.banner(), "Ctrl+B") || strings.Contains(noEscape.banner(), "Ctrl+]") || !strings.Contains(noEscape.banner(), "Close terminal") {
+	if strings.Contains(noEscape.banner(), "F12") || strings.Contains(noEscape.banner(), "Ctrl+B") || strings.Contains(noEscape.banner(), "Ctrl+]") || !strings.Contains(noEscape.banner(), "Close terminal") {
 		t.Fatal("advertised unavailable detach shortcut", noEscape.banner())
 	}
 }

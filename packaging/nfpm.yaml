@@ -15,8 +15,6 @@ contents:
       mode: 0755
   - src: README.md
     dst: /usr/share/doc/mtask/README.md
-  - src: README.zh-CN.md
-    dst: /usr/share/doc/mtask/README.zh-CN.md
   - src: LICENSE
     dst: /usr/share/doc/mtask/LICENSE
   - src: THIRD_PARTY_NOTICES.md
@@ -27,7 +25,5 @@ contents:
   - src: docs
     dst: /usr/share/doc/mtask/docs
     type: tree
-  - src: mtask 开发计划.md
-    dst: /usr/share/doc/mtask/mtask 开发计划.md
 deb:
   compression: gzip

@@ -1,47 +1,38 @@
-# MTasK 使用指南
+# Usage
 
-## 安装和启动
-
-在已有 Go 1.26+ 的 Linux/macOS 上：
+## Create and reconnect
 
 ```sh
-make build
-./scripts/install.sh --prefix "$HOME/.local" ./bin/mtask
-"$HOME/.local/bin/mtask" --version
-mtask
-```
-
-如果 `~/.local/bin` 尚未加入 PATH，可使用上述完整路径运行。单文件复制即可运行；不需要 Go、tmux、screen、zmx 或数据库。Linux 的进程枚举直接使用 `/proc`，macOS 使用系统进程查询 API；TUI 的资源采样另使用系统自带 `/bin/ps`。
-
-Linux 本地安装包可以使用 `sudo apt install ./mtask_*.deb`（选择当前架构的一个文件）或 `sudo rpm -Uvh mtask_*.rpm` 安装。当前不对外发布软件源；本地 APT 索引的生成方式见 [安装与打包](installation.md)。
-
-## 新建与连接
-
-```sh
-mtask new --name work
+mtask new --name work -- bash
 mtask new -d --name build -- make test
-mtask new --name editor -- vim README.md
-mtask new --cwd /absolute/project --name command -- bash -lc 'echo hello; exec bash'
-mtask new --json --name worker -- python3 worker.py
+mtask new --cwd /absolute/project --name editor -- vim README.md
 mtask attach work
 ```
 
-新建前台任务的首次连接保留最多 2 MiB 启动字节；如果应用在连接前已经结束，则显示仍保留的输出并返回其退出码。超过日志保留上限的早期输出无法补回。
+Interactive `new` enters the task immediately. `-d`, `--json` or non-terminal input
+starts it in the background. Omit the command to use `$SHELL` or `/bin/sh`.
+Commands run as argv; use `bash -lc '...'` explicitly for shell syntax.
+Tasks accept names, full IDs or unique ID prefixes of at least four characters.
 
-新建时，交互终端默认立即进入任务；使用 `-d`、`--json` 或非交互输入时后台启动。省略命令时使用 `$SHELL`，未设置时使用 `/bin/sh`。`--` 后按原始 argv 执行，不自动拼接或解释 shell；若需要管道、重定向、变量展开，请显式调用 shell。
+## Detach keys
 
-进入成功时，会显示一次 `MTasK · 会话名 [8 位 ID]` 和断开快捷键，终端标题也设置为同一会话标识。名称来自当前记录，重命名后再次进入会显示新名称。提示跟随所选语言；`--no-escape` 时不提示已禁用的快捷键。正常断开或应用退出后，在支持标题栈的终端恢复先前标题。
+- **F12**: detach; Mac keyboards may require Fn+F12.
+- **Ctrl+B, d**: release Ctrl before pressing d.
+- **Ctrl+B, Ctrl+D**: keep Ctrl held and press B then D.
+- **Ctrl+], d**: legacy alias.
 
-提示只在进入时输出，不保留顶部/底部状态行，不改变应用可用尺寸。全屏应用会重绘掉提示；应用自行设置的窗口标题也可能覆盖 MTasK 标题，mtask 不拦截或改写这些应用输出。
+From the manager, detach returns to the list. A direct `mtask attach` returns to
+the shell. The task keeps running. Standalone Ctrl+D and Ctrl+C retain the
+application's behavior. Press a prefix twice to send it literally.
 
-用 **Ctrl+B，然后按 d** 断开任务连接（沿用 tmux 的按键习惯），任务继续运行。旧的 **Ctrl+]，然后按 d** 仍可用。连续按两次 Ctrl+B 可向应用输入一个字面的 Ctrl+B，连续按两次 Ctrl+] 同理。要保留每一个输入字节并禁用两种前缀，可用 `mtask attach --no-escape work`。这时通过关闭终端或向前端发送 TERM 断开。Ctrl+C 正常送给子应用，不是 mtask 的退出快捷键。
+`mtask attach --no-escape TASK` disables all detach shortcuts, including F12.
+Close the terminal or end the frontend to disconnect in that mode. Bracketed
+paste passes through without interpreting detach keys. Incomplete escape
+sequences wait up to 50 ms before being forwarded.
 
-任务名、完整 ID、至少 4 位且唯一的 ID 前缀均可用于命令。名称精确匹配优先于 ID 前缀；冲突名称在同一状态目录内被拒绝，完成任务保留名称直到重命名或删除。
-
-## 查看、停止与历史
+## Manage tasks
 
 ```sh
-mtask list
 mtask list --json
 mtask show work
 mtask rename work work-old
@@ -50,141 +41,78 @@ mtask list --history --json
 mtask logs work-old
 mtask logs --follow work-old
 mtask logs --tail 4096 work-old
-mtask logs --raw work-old
 mtask delete work-old
 ```
 
-`online` 表示已与对应实例的 Broker 握手；`unreachable` 表示现在无法连接，磁盘中的 running 状态只是上一次快照；`finished` 表示已记录退出结果。
+`stop` sends TERM, then KILL after one second if necessary. Deletion requires a
+finished task with no active broker. `show` reports exit code and signal.
+Detach returns 0; an application exit is returned by `attach`.
 
-`stop` 向受管理的终端会话发送 TERM，一秒后仍存活的任务收到 KILL，并等待 Broker 完成状态写入与连接清理。删除仅允许没有活动 Broker 的已完成任务。`show` 给出应用退出码与终止信号；直接连接时，应用的非零退出码也成为 `mtask attach` 的退出码。主动 detach 返回 0。
-
-原始输出日志保留两个约 8 MiB 的文件，总量不超过约 16 MiB/任务；日志没有输入记录。普通 `logs` 清除 ANSI 控制序列，`--raw` 显式输出原始控制字节。`--tail` 按字节计数，0 表示所有仍保留的输出。`--follow` 从当前文件尾部开始跟随并跨轮转，任务结束后退出；跨多个轮转后已经移除的输出无法补回。
-
-## TUI
-
-| 按键 | 操作 |
-| --- | --- |
-| ←/→、h/l、Tab / Shift+Tab | 切换 Running / Stop / Settings 标签 |
-| ↑/↓ 或 j/k | 选择任务，列表随选择滚动 |
-| Enter | 运行中独占进入；已停止打开输出历史；被占用时显示连接方式菜单 |
-| c | 选择接管、只读或共享；默认只读，接管需再次确认 |
-| v | 在运行中打开/关闭左右分栏监控，Esc 也可返回列表 |
-| n | 输入名称并启动 Shell；空名称自动生成 |
-| s | 打开停止弹窗，默认取消；左右键/Tab 选按钮、Enter 执行，y 直接确认 |
-| F2 / e | 修改名称，Enter 保存，Esc 取消 |
-| Delete / Backspace / x | 打开删除弹窗，默认取消，选按钮后 Enter 或 y 确认 |
-| F5 / r | 刷新状态 |
-| , | 切到设置标签并直接进入编辑 |
-| F1 / ? | 查看快捷键；Esc/q/F1/? 返回当前标签 |
-| Esc / q / Ctrl+C | 退出列表 |
-
-F2 用于重命名，设置位于第三个标签，也可按逗号 `,` 直接编辑。e/x/r 分别对应重命名、删除和刷新。普通 Mac Delete 键发送 Backspace，也可以删除已停止记录，仍需要确认。笔记本的功能键可能需要配合 Fn，所有功能都有字符键替代。
-
-顶部显示 MTasK 和版本号。Running（运行中）包含启动、运行、停止中的会话；Stop（已停止）包含结束、失败或未启动记录。前两个会话标签分别保留选择位置；第三个 Settings（设置）标签显示同一份界面偏好。活动会话暂时无法连接时仍留在运行标签并显示 `!`，不会误当作已停止任务。
-
-每个会话占一行，选中项用反色和左右边线标记。ID 通常仅显示前 8 位，有冲突时自动加长；所有操作仍使用完整 ID，JSON 也保留完整 ID。运行时长按真实启动时间计算；旧 Broker 没有启动时间时回退到创建时间，已结束任务显示固定耗时。长名称按终端单元格截断，底部显示选中项的状态、命令及目录。窄窗口会先隐藏资源列和 ID 列。
-
-底部快捷键集中显示为一行；空间不足时减少分隔符或仅显示按键，完整文字说明保留在 F1/? 帮助页。
-
-列表默认每 2 秒刷新状态和资源，计时每秒更新。CPU 是任务进程及其后代的累计 CPU 时间增量，单核满载为 100%，多核可以超过 100%；内存是这些进程 RSS 的总和，共享内存可能重复计入。Broker 自身不计入。首次或采样中断时 CPU 显示 `…`，无法读取或已停止时显示 `—`。采样只读，不向任务发送信号，不依赖外部监控服务。
-
-## 监控与确认弹窗
-
-运行中按 v，左侧只展示紧凑会话列表，右侧显示所选会话的只读画面，包括颜色、光标更新和备用屏幕。↑/↓ 切换会话，v/Esc 返回普通列表，F5 重试失败的预览，Enter 进入完整可输入的终端；Ctrl+B d 断开后回到监控。监控本身不转发键盘输入。监控主界面的 ←/→（以及 h/l）不响应，不切换标签或重建连接；Tab/Shift+Tab 仍可导航，弹窗和输入框保留自身的左右键操作。
-
-右侧面板决定监控期间的 PTY 尺寸，窗口缩放时同步调整。监控取得普通独占显示连接，遇到已有控制端时直接显示“无法监控”，不自动接管；失联、输出不可用或读取失败时显示相同提示。离开、切换、退出或失败后释放连接。进入时直接使用监控尺寸，离开或切换后保留该尺寸；重复进入、定时刷新及相同窗口尺寸通知不重复调整。只有监控窗口实际缩放时才更新尺寸。不会重建会话或重启任务进程。监控会占用一个连接，其他终端仍可显式选择接管/共享。
-
-监控只在前端把保留输出还原成虚拟屏幕，不改变完整 attach 的透明字节转发。历史受每任务约 16 MiB 的日志上限约束；缺失的历史无法完整恢复。常见全屏程序依靠 resize 重绘，未承诺所有终端扩展、图片协议和应用都能完整复现。只有当前选中会话运行预览，切换即取消旧预览。
-
-停止、删除、接管使用带边框的居中弹窗，背景变暗，展示操作和目标名称/短 ID。默认选中取消；←/→ 或 Tab 切换按钮，Enter 执行当前按钮，y 直接确认，Esc 或其他无关按键取消。新建与重命名的输入也使用弹窗，监控模式下同样可见。
-
-TUI 新建/重命名时若名称已占用，先展示原名称和自动编号建议（例如 work → work-2 → work-3）。运行和历史会话都参与查重；重命名排除当前会话自身。候选名称保持有效 UTF-8 且不超过 128 字节。只有确认后才提交该确切名称；提交前若被其他进程占用，会再次弹窗展示新建议，不会覆盖原会话或静默接受另一个名称。取消后返回原输入框。CLI 创建/重命名仍返回重名错误及建议，保持脚本行为不增加交互。
-
-## 多终端连接
+Logs retain two approximately 8 MiB files. Normal viewing strips control
+sequences; `logs --raw` writes the original bytes. `--tail` counts bytes.
+Stopped records and logs expire after one hour by default:
 
 ```sh
-mtask attach work                # 默认独占；已有控制端时返回 busy
-mtask attach work --takeover     # 明确接管，断开全部旧控制端，保留只读端
-mtask attach work --read-only    # 只读观看，键盘输入不发送给应用
-mtask attach work --shared       # 共享输入，加入现有控制端
+mtask settings set history-retention 24h
+mtask settings set history-retention off
 ```
 
-三个选项互斥。TUI 按 c 可主动选择；普通 Enter 遇到 busy 时自动打开同一菜单，默认选中只读。接管会显示目标名称和短 ID，默认取消，可选中接管按钮后 Enter，或按 y 确认；旧 TUI 控制端收到接管提示并回到列表，任务及其进程保持运行。CLI 的显式 --takeover 即为接管指令，无额外交互。
+In the Stop tab, Enter opens retained output. Use arrows, PgUp/PgDn, Home/End to
+navigate; Esc/q returns. Viewing history does not restart the task.
 
-只读连接不能发送应用输入、改变 PTY 尺寸或通过该连接停止任务；Ctrl+B d 仍可返回列表。共享连接中的所有控制端都可以输入，输入按完整协议帧依次写入同一 PTY，命令行、Ctrl+C 和鼠标操作可能相互影响。主控为最早加入且仍在线的控制端，其窗口决定 PTY 尺寸；主控离开后依加入顺序转交。只读端不会自动获得控制。接管后新控制端成为主控，只读端继续观看。
-
-所有连接都接收同一份实时原始输出，各自使用有界队列；一个慢客户端被断开不会让其他客户端丢字节或卡住。全屏新旁观端通过主控协作重绘，旁观端不调整 PTY 尺寸。各窗口应至少容纳主控尺寸；较小终端的换行和截断依本地终端而定。普通 Shell 的既有滚动历史不复制到新终端；新终端观看后续输出，过去输出用 logs 查看。尚未加入完整 VT 屏幕快照；不保证所有应用都响应重绘。
-
-当前多终端仍要求同一 Unix UID，适合使用同一服务器账号的协作；没有新增跨账号访问或对外网络服务。只读是当前连接的角色，拥有同一系统账号的人仍可另开 CLI 管理会话。独立 Broker 不随二进制替换重启；新方式只适用于 0.3.0 及以后的 Broker，新前端对旧 Broker 会先探测能力，明确拒绝新方式，保留普通独占连接，不会把只读降级成可输入连接。旧前端可继续独占连接新 Broker，但全屏协作重绘需新主控前端。
-
-## 设置与语言
-
-通过 ←/→、Tab / Shift+Tab 切到第三个 Settings（设置）标签；此时左右键继续切换标签，按 Enter 或 ↓ 进入表单编辑。也可按 `,` 直接切到设置并开始编辑。
-
-编辑时 ↑/↓ 选择选项，←/→ 修改，Enter 保存后留在设置标签，Esc/q 取消编辑。语言和主题可即时预览，取消会还原。Tab / Shift+Tab 随时切换标签，未保存的修改会被丢弃；没有编辑时，Esc 返回此前的会话列表，q 退出。设置项：
-
-| 项目 | 可选值 / 默认值 |
-| --- | --- |
-| 语言 | auto、zh-CN、en、ja、es、fr；默认 auto |
-| 主题 | auto、dark、light；默认 auto |
-| 刷新间隔 | 1、2、5 秒；默认 2 秒 |
-| 资源统计 | on / off；默认 on |
-| 默认标签 | running / stop；默认 running |
-| 已停止自动删除 | 默认 1 小时；可选不删除、5/15/30 分钟、1/6 小时、1/7 天 |
+## Multiple clients
 
 ```sh
-mtask settings
+mtask attach work                # Exclusive; returns busy if occupied
+mtask attach work --read-only    # No application input or resize
+mtask attach work --shared       # All controllers may type
+mtask attach work --takeover     # Disconnect existing controllers; keep readers
+```
+
+The flags are mutually exclusive and require v0.3.0+ brokers. The TUI's `c` menu
+provides the same modes, with read-only selected by default. Takeover requires
+confirmation in the TUI; the CLI flag acts immediately.
+
+The oldest connected controller owns the PTY size; ownership transfers on
+leaving. Shared inputs can interfere. Read-only restricts that connection, not
+the account's ability to open another management client. All peers use the same
+Unix UID. Older brokers retain ordinary exclusive attach.
+
+## Monitor and settings
+
+Press `v` in Running to preview a task. ↑/↓ switches tasks, F5 retries, Enter
+attaches, and v/Esc returns. ←/→ and h/l do nothing in the monitor's main view;
+dialogs and inputs keep their normal arrow keys. Monitoring uses an exclusive
+connection and the pane's size. Leaving retains that size. Occupied or unavailable
+tasks display “Unable to monitor.”
+
+The Settings tab opens for editing with Enter, or directly with `,`.
+↑/↓ selects a field, ←/→ changes it, Enter saves, Esc cancels. Tab switches tabs
+and discards unsaved changes.
+
+```sh
 mtask settings --json
-mtask settings set language zh-CN
+mtask settings set language en
 mtask settings set theme dark
 mtask settings set refresh 2
 mtask settings set resources off
 mtask settings set default-tab stop
-mtask settings set history-retention 1h
-mtask settings set history-retention 30m
-mtask settings set history-retention off
 mtask settings reset
 ```
 
-设置以私有权限原子保存到当前状态目录的 `settings.json`，不同状态目录独立。下次启动生效；当前 TUI 保存后立即生效。auto 语言根据 `LC_ALL`、`LC_MESSAGES`、`LANGUAGE`、`LANG` 顺序识别语言包注册的语言及地区别名，不支持的语言回退英文。当前界面、操作提示与 CLI 帮助支持简体中文、英语、日语、西班牙语和法语，底层系统错误保留原始诊断。命令、参数名及 JSON 字段保持稳定。auto 主题尊重终端背景；终端未提供背景提示时建议手动选择深色或浅色。
+Languages: auto, en, zh-CN, ja, es, fr. Themes: auto, dark, light. Refresh: 1, 2 or
+5 seconds. CPU/RSS cover the task process tree; shared memory can be counted more
+than once.
 
-## 断线、恢复与兼容性
+## Storage and recovery
 
-各平台和应用的实测范围、仅构建目标与待验证项目见[兼容性表](compatibility.md)。
+State directory precedence: `--state-dir`, `MTASK_STATE_DIR`,
+`$XDG_STATE_HOME/mtask`, then `~/.local/state/mtask`. Directories are 0700; metadata
+and logs are 0600. Socket peers verify UID. Arguments and output may contain
+sensitive data.
 
-关闭前端、失去本地终端或 SSH 连接后，独立 Broker 与任务继续运行；再次 `attach` 进入同一任务。系统关机、OOM 和管理员对整个登录会话的强制清理不在此保活保证内。某些主机的登录策略会清理所有用户进程，需要由管理员配置用户服务或相应保活策略。
-
-重连先从私有模式检查点和保留日志恢复备用屏幕、鼠标、粘贴、光标及应用方向键等已知模式。对全屏应用短暂改变一行尺寸，等待应用输出清屏重绘信号，再恢复真实尺寸（最多等待 2 秒），让依赖 ncurses 缓存的应用重新绘制，避免差量画面覆盖外层 Shell。此过程仅在连接边界执行，正常输出继续原样转发。
-
-**不回放历史画面、终端查询或剪贴板命令，不重建宿主终端滚动缓冲。** 应用最终画面仍取决于其重绘支持；若首次连接前关键模式已从日志中轮转丢失且没有检查点，或使用未覆盖的增强键盘协议，恢复能力有限。Shell 可按 Ctrl+L 重绘，断开期间的输出可用日志查看。
-
-默认独占连接遇到已有控制端时返回 busy；支持新模式的 Broker 可显式选择接管、只读或共享，详见多终端连接。状态查询可并行。客户端输出过慢时会被断开，后台任务继续运行。此时查询状态后重新连接。
-
-如果 Broker 被 KILL 或崩溃，PTY 无法由新进程接管。先用 `show` 检查状态；`mtask recover TASK` 在确认 Broker 排他锁已释放后将记录标为 failed，随后可删除记录。recover 不向过期 PID 发信号。子会话通常会因终端挂断退出，但主动忽略挂断或脱离会话的程序可能需要人工检查；不能把旧 PID 当作可安全操作的进程身份。
-
-## 已停止会话自动清理
-
-默认保留 **1 小时**，到期后删除会话记录和对应日志。时间按结束时间计算，旧版记录回退到终态更新时间；未启动记录以创建时间计算。运行中、启动中、正在停止及尚未恢复的失联记录不会被当作终态删除；后台进程的独占锁尚未释放时也不会删除。
-
-可在设置的“已停止自动删除”中调整或选择“不自动删除”。CLI 的 `history-retention` 接受 `30m`、`1h`、`24h` 等整秒时长（最多 365 天），`off`/`never`/`0` 关闭。缩短保留时间会让已经超期的记录在下一次检查时被清理。
-
-每个状态目录只有一个有效的轻量历史维护进程，通常每 5 秒检查一次。关闭前端后仍会执行；无任务或关闭清理策略时退出，重新使用 mtask 时可按需启动。它不管理 PTY，也不向任务进程发信号。电脑休眠/关机期间不会执行；休眠唤醒后，或关机重启后再次使用 mtask 时，按时间补清理。错误可查看状态目录的 `history.log`。
-
-旧设置文件未包含保留时间时也采用 1 小时默认值。需要长期保留历史时可使用 `mtask settings set history-retention off`。
-
-## 状态与权限
-
-状态目录优先级：`--state-dir` → `MTASK_STATE_DIR` → `$XDG_STATE_HOME/mtask` → `~/.local/state/mtask`。目录为 0700，元数据、锁和日志为 0600。不同状态目录独立管理任务。
-
-Socket 位于 `$XDG_RUNTIME_DIR/mtask/<hash>/`，或 `/tmp/mtask-<uid>/<hash>/`；客户端和服务端都会校验 peer UID。Socket 路径过长或目录权限不安全时直接报错。状态目录不保存完整环境变量，但命令参数和应用日志可能含业务数据，应按私有文件管理。
-
-## 升级与卸载
-
-安装脚本将新二进制写入同目录临时文件后原子替换。已有 Broker 继续使用原来加载的程序，新前端与协议 v1 连接。包管理器安装也不配置全局守护服务或主动重启任务。
-
-卸载命令本身不删除任务状态，也不主动停止已有 Broker。已启用的历史清理策略仍会执行；若要长期保留停止历史，可先设置 `history-retention off`。建议先使用 `list` / `stop` / `delete` 处理需要结束的任务，再移除程序。卸载后重新安装兼容版本可以继续连接仍在运行的任务。
-
-
-## 已停止会话的输出历史
-
-在“已停止”标签选中记录后按 Enter，直接打开保留的输出历史，默认定位到最新输出。↑/↓ 滚动、PgUp/PgDn 翻页、Home/End 到开头/末尾、←/→ 横向查看长行；Esc/q/Enter 返回原列表与选择。无输出时显示空记录，读取失败时显示错误。查看不会启动、停止或删除任务，也不取得 Broker 控制权；历史仍受既有日志容量和自动清理策略约束。终端控制序列被移除，按可滚动文本展示。
+After SSH loss, reconnect to the same host/account and run mtask again. Reboot,
+OOM or host login-session cleanup can end tasks. A crashed broker's PTY cannot
+be recovered; `mtask recover TASK` reconciles stale records without signalling
+old PIDs. Installation replaces the executable atomically and leaves existing
+brokers running. See [compatibility](compatibility.md) for terminal limitations.

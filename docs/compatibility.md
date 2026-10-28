@@ -1,13 +1,13 @@
 # Compatibility
 
-Version: **0.4.3-dev** · Updated: 2026-10-28
+Updated: 2026-10-28
 
 ## Platforms
 
 | Platform | Status | Notes |
 | --- | --- | --- |
-| macOS arm64 | Tested locally | Nine regression suites passed with a race-enabled binary. |
-| Ubuntu 24.04.3 LTS arm64 | Tested on a server | Nine regression suites passed with a production binary. SSH disconnect/reconnect was also tested. |
+| macOS arm64 | Tested locally | Core terminal and process regression suites passed. |
+| Ubuntu 24.04.3 LTS arm64 | Tested on a server | Core terminal and process regression suites passed. SSH disconnect/reconnect was also tested. |
 | Linux amd64 | Cross-built | CI results are available in [Actions](https://github.com/raywcm/mtask/actions). |
 | macOS amd64 | Cross-built | Native Intel Mac testing is pending. |
 | Debian / RPM-based distributions | Package contents checked | Native package-manager install, upgrade and removal tests are pending. |

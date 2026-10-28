@@ -59,14 +59,16 @@ def drain(fd, duration=.15):
     return out
 
 
-def wait_output(fd, needle, timeout=6):
+def wait_output(fd, needle, timeout=6, normalize_whitespace=False):
     """Wait for actual output instead of assuming frontend startup latency."""
     output = b''
     deadline = time.monotonic() + timeout
-    while needle not in output and time.monotonic() < deadline:
+    while time.monotonic() < deadline:
         output += drain(fd, .05)
-    assert needle in output, output
-    return output
+        value = b' '.join(output.split()) if normalize_whitespace else output
+        if needle in value:
+            return output
+    raise AssertionError(output)
 
 
 def frame(conn, kind, payload=b''):
@@ -298,20 +300,20 @@ def test_resize_interrupt_and_noescape(h):
     task = h.create('resize', sys.executable, '-c', script)
     until(lambda: b'READY' in h.cli('logs', task).stdout)
     pid, fd = h.spawn_tty('attach', task)
-    drain(fd)
+    wait_output(fd, b'resize [')
     fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack('HHHH', 37, 103, 0, 0))
     os.kill(pid, signal.SIGWINCH)
-    assert b'SIZE:37:103' in drain(fd, .3)
+    wait_output(fd, b'SIZE:37:103')
     os.write(fd, b'\x1dd');drain(fd);assert h.join(pid) == 0
     h.cli('stop', task)
     task = h.create('interrupt', '/bin/sh', '-c', 'exec sleep 30')
     pid, fd = h.spawn_tty('attach', task)
-    drain(fd);os.write(fd, b'\x03');drain(fd)
+    wait_output(fd, b'interrupt [');os.write(fd, b'\x03');drain(fd)
     assert h.join(pid) == 130
     task = h.create('noescape', '/bin/sh', '-c', 'stty raw -echo; printf READY; dd bs=1 count=4 2>/dev/null | od -An -tx1')
     until(lambda: b'READY' in h.cli('logs', task).stdout)
     pid, fd = h.spawn_tty('attach', '--no-escape', task)
-    drain(fd);os.write(fd, b'\x02d\x1dd');out=drain(fd, .3)
+    wait_output(fd, b'noescape [');os.write(fd, b'\x02d\x1dd');out=wait_output(fd, b'02 64 1d 64', normalize_whitespace=True)
     assert b'02 64 1d 64' in b' '.join(out.split()), out
     assert h.join(pid) == 0
     print('PASS resize/SIGWINCH, Ctrl+C and disabled detach escape', flush=True)

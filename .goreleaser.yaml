@@ -13,7 +13,7 @@ builds:
 archives:
   - formats: [tar.gz]
     name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
-    files: [README.md, README.zh-CN.md, LICENSE, THIRD_PARTY_NOTICES.md, 'licenses/**', 'mtask 开发计划.md', 'docs/*.md', 'docs/archive/*.md', 'docs/assets/**']
+    files: [README.md, LICENSE, THIRD_PARTY_NOTICES.md, 'licenses/**', 'docs/*.md', 'docs/archive/*.md', 'docs/assets/**']
 nfpms:
   - id: linux
     package_name: mtask
@@ -28,8 +28,6 @@ nfpms:
     contents:
       - src: README.md
         dst: /usr/share/doc/mtask/README.md
-      - src: README.zh-CN.md
-        dst: /usr/share/doc/mtask/README.zh-CN.md
       - src: LICENSE
         dst: /usr/share/doc/mtask/LICENSE
       - src: THIRD_PARTY_NOTICES.md
@@ -40,12 +38,10 @@ nfpms:
       - src: docs
         dst: /usr/share/doc/mtask/docs
         type: tree
-      - src: mtask 开发计划.md
-        dst: /usr/share/doc/mtask/mtask 开发计划.md
 checksum:
   name_template: checksums.txt
 snapshot:
-  version_template: '0.4.3-dev'
+  version_template: '0.4.4-dev'
 changelog:
   disable: true
 # Public releases are disabled during development.

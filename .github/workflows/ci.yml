@@ -35,6 +35,7 @@ jobs:
           "$RUNNER_TEMP/mtask-screen/bin/python" scripts/history_view_regression.py bin/mtask
           "$RUNNER_TEMP/mtask-screen/bin/python" scripts/history_regression.py bin/mtask
           "$RUNNER_TEMP/mtask-screen/bin/python" scripts/tui_exit_regression.py bin/mtask
+          "$RUNNER_TEMP/mtask-screen/bin/python" scripts/detach_keys_regression.py bin/mtask
   package:
     runs-on: ubuntu-24.04
     needs: test

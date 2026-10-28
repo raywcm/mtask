@@ -9,7 +9,7 @@
     "legacy_detach_hint": "従来の操作：Ctrl+] の後に d",
     "literal_prefix_hint": "Ctrl+B を2回押すとアプリに Ctrl+B を送信",
     "help_close_hint": "Esc / q / F1 / ? で現在のタブに戻る",
-    "attach_identity_hint": "Ctrl+B の後に d で切断",
+    "attach_identity_hint": "F12 または Ctrl+B の後に d / Ctrl+D で切断",
     "attach_no_escape_hint": "端末を閉じると切断",
     "stop_before_delete": "先にセッションを停止し、「停止済み」タブから削除してください。",
     "exit_code": "終了コード",
@@ -35,7 +35,7 @@
     "delete": "削除",
     "refresh": "更新",
     "quit": "終了",
-    "detach_hint": "Ctrl+B の後に d で一覧に戻る",
+    "detach_hint": "F12 または Ctrl+B の後に d / Ctrl+D で一覧へ",
     "working": "処理中…",
     "error": "エラー",
     "saved": "設定を保存しました",
@@ -129,7 +129,6 @@
     "Independent terminal task manager": "独立した端末タスクマネージャー",
     "Start a persistent task (default: your shell)": "永続タスクを起動（既定はシェル）",
     "List tasks and live broker health": "タスクとブローカーの接続状態を表示",
-    "Enter a task; Ctrl+B then d detaches": "タスクを開く；Ctrl+B の後に d で切断",
     "Inspect task, process identity, exit status and health": "タスク、プロセス、終了結果と接続状態を確認",
     "Stop the task session and wait for its exit": "タスクセッションを停止し、終了を待つ",
     "Rename a task": "タスク名を変更",
@@ -145,11 +144,12 @@
     "working directory": "作業ディレクトリ",
     "start in background": "バックグラウンドで起動",
     "start in background and print JSON": "バックグラウンドで起動して JSON を出力",
-    "forward every input byte, including Ctrl+B d": "Ctrl+B d を含むすべての入力をそのまま転送",
     "include original terminal control bytes": "元の端末制御コードを含める",
     "follow output until task exit": "タスク終了まで出力を追跡",
     "last N bytes (0 means all retained output)": "末尾 N バイト（0 は保存されている全出力）",
     "include session CPU and memory samples": "セッションの CPU とメモリの測定値を含める",
-    "Help about any command": "各コマンドのヘルプを表示"
+    "Help about any command": "各コマンドのヘルプを表示",
+    "Enter a task; F12 detaches": "タスクを開く；F12 で切断",
+    "forward every input byte, including detach keys": "切断キーを含むすべての入力をそのまま転送"
   }
 }
