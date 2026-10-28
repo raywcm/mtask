@@ -1,12 +1,22 @@
 # mtask 开发计划
 
+初始开发目标。当前功能和用法见 [README](README.zh-CN.md)，版本进展见[开发日志](docs/development-log.md)。
+
 ## 一、开发背景
 
-现有的 tmux、screen 等终端复用工具操作复杂，并且可能影响 Codex、OpenCode 等现代交互式终端应用的滚动、鼠标和显示体验。mtask 旨在开发一款**轻量、独立、通用的终端任务管理器**，不依赖 tmux、zmx 等工具。核心原则是 **只负责管理任务，不改变应用原本的终端体验**。用户执行 `mtask` 即可进入 TUI 任务列表，通过方向键选择、Enter 进入、快捷键新建或停止任务，同时提供完整 CLI 接口，支持任务后台运行、SSH 断线重连、状态查看和历史管理。最终实现 Linux/macOS 跨平台单文件部署，并支持 `apt install mtask` 等标准安装方式。
+mtask 面向需要后台保活和断线重连的终端任务。目标是提供一个打开即可选择会话的任务列表，同时保留 CLI，支持创建、进入、停止、查看状态和管理历史。
+
+每个任务由独立 PTY Broker 管理，不依赖 tmux、screen 或 zmx。正常连接时原样转发应用字节，任务列表在应用之外运行。目标平台为 Linux/macOS，采用单二进制部署，并提供 Deb/RPM 等安装包。
 
 ## 二、开发语言与技术选型
 
-推荐使用 **Go** 开发，兼顾性能、并发处理、跨平台支持和单二进制部署。采用 **Bubble Tea v2 + Bubbles** 构建 TUI，**Cobra** 实现 CLI，**creack/pty** 管理伪终端，**golang.org/x/term** 处理终端 Raw Mode，使用 Go 标准库的 `net`、`os/exec`、`io` 实现 Unix Socket 通信、进程管理及透明字节转发。底层自研轻量级 **PTY Broker**，每个任务独立运行，负责进程保活、终端连接和断线重连；正常连接期间不解析或重绘终端内容，恢复连接时逐步完善屏幕状态恢复机制。任务信息使用本地结构化文件存储，后期根据需要引入 SQLite。通过 **GoReleaser + nFPM + GitHub Actions** 完成跨平台构建、Deb/RPM 打包及自动发布。
+- Go：进程、并发、Socket 和跨平台构建。
+- Bubble Tea v2 + Bubbles：任务列表和设置界面。
+- Cobra：CLI 命令和参数。
+- creack/pty、golang.org/x/term：PTY 与终端模式。
+- Unix Socket：前端与 Broker 通信，输入输出使用原始字节载荷。
+- 本地结构化文件：任务配置、运行状态和设置；日志采用有界轮转。
+- GoReleaser、nFPM、GitHub Actions：构建、打包和测试。
 
 开发顺序：**PTY Broker → CLI 任务管理 → TUI → 终端兼容性优化 → 安装与发布**。
 
@@ -24,4 +34,4 @@
 10. **跨平台兼容**：在 Ubuntu、Debian、macOS 的常见终端中测试，包括 SSH、不同终端尺寸及中英文显示。
 11. **安装与升级**：验证单二进制运行、`.deb` 安装与卸载、`apt` 软件源安装，以及软件升级时已有后台任务不被终止。
 
-对于设备环境无法完成的目标，可以暂时跳过。请写好开发日志。
+测试结果记录在开发日志中；缺少设备或运行环境的项目标为待测。

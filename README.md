@@ -11,13 +11,12 @@ During an attached session, application bytes go directly to your terminal.
 
 **Status: pre-release, v0.4.3-dev.** Public releases and an APT repository are not
 available yet. Screen restoration has limitations; read the compatibility notes
-before relying on mtask for important work.
+for details.
 
 ![A recorded mtask task lifecycle](docs/assets/demo.gif)
 
-The demo uses a shell in temporary state. It shows the list, attach/detach,
-monitoring, stop confirmation, and retained output history; it does not simulate
-an AI agent or claim to demonstrate SSH reconnect.
+The demo shows a shell session: attach, detach, monitor, stop, and view its output
+history.
 
 ## Build and install
 
@@ -84,7 +83,7 @@ v0.3.0 or later. Older brokers keep running and retain normal exclusive attach.
 A shared session uses the oldest connected controller's terminal size. All
 connections require the same Unix user ID; this is not cross-account access control.
 
-## Features and boundaries
+## Features and limitations
 
 - Independent task brokers; closing the list does not stop tasks.
 - Running/stopped tabs, resource information, output history, and configurable retention.
@@ -114,10 +113,9 @@ make acceptance PYTHON=.venv/bin/python
 python3 scripts/third_party_notices.py --check
 ```
 
-Acceptance tests use isolated temporary state and do not attach to user tasks.
-See [stability acceptance](docs/stability.md) for scope and evidence. CI runs on pushes and pull requests; inspect the actual results in
-[GitHub Actions](https://github.com/raywcm/mtask/actions). Local acceptance
-evidence and hosted CI results are recorded separately.
+Tests use temporary state directories. See the [test guide](docs/stability.md)
+for individual suites and [GitHub Actions](https://github.com/raywcm/mtask/actions)
+for CI results.
 
 The default state directory is `$XDG_STATE_HOME/mtask` or `~/.local/state/mtask`;
 `--state-dir` and `MTASK_STATE_DIR` override it. Directories are private (0700),
@@ -129,7 +127,7 @@ sensitive application data; raw logs reproduce terminal control sequences.
 
 - [Detailed usage (Chinese)](docs/usage.md)
 - [Compatibility matrix](docs/compatibility.md)
-- [Reproducible stability acceptance](docs/stability.md)
+- [Testing](docs/stability.md)
 - [Build, installation, and packaging](docs/installation.md)
 - [Architecture](docs/architecture.md) and [protocol](docs/protocol.md)
 - [Adding a language](docs/i18n.md)

@@ -2,15 +2,15 @@
 
 轻量、独立的 Linux/macOS 终端任务管理器。交互程序在断开连接后继续运行，通过任务列表重新进入同一进程。
 
-[English](README.md) · [完整使用指南](docs/usage.md) · [兼容性与限制](docs/compatibility.md)
+[English](README.md) · [使用指南](docs/usage.md) · [兼容性与限制](docs/compatibility.md)
 
-每个任务由独立 PTY Broker 保持运行，提供完整 CLI 和 TUI。运行时只需单个二进制文件，不依赖 tmux、screen、zmx、数据库或 Go；正常连接时原样转发应用终端字节。
+每个任务由独立 PTY Broker 保持运行，提供 CLI 和 TUI。运行时只需单个二进制文件，不依赖 tmux、screen、zmx、数据库或 Go；正常连接时原样转发应用终端字节。
 
-**当前为预发行版本 v0.4.3-dev，尚未提供公开下载或 APT 软件源。** 重连画面恢复存在限制，重要任务使用前请阅读兼容性说明。
+**当前为预发行版本 v0.4.3-dev，尚未提供公开下载或 APT 软件源。** 重连画面恢复存在限制，具体情况见兼容性说明。
 
 ![mtask 实际操作录制](docs/assets/demo.gif)
 
-演示在临时状态目录运行 Shell，展示列表、进入/返回、监控、停止确认和输出历史；没有模拟 AI 应用，也不代表 SSH 重连验收。
+演示包含 Shell 会话的进入、断开、监控、停止确认和输出历史查看。
 
 ## 构建与安装
 
@@ -71,11 +71,11 @@ mtask attach work --takeover     # 断开原控制端并接管
 
 **重连恢复已知终端模式并请求全屏程序重绘，尚不恢复完整屏幕快照或宿主终端滚动历史。** 实际画面取决于应用是否支持重绘，以及所使用的终端扩展。
 
-监控按右侧面板改变任务尺寸，离开后保留该尺寸；完整进入时使用完整终端尺寸。占用、失联或输出不可用时明确显示“无法监控”，不自动接管。监控主界面左右键不响应；弹窗、输入框保留方向键操作。
+监控按右侧面板改变任务尺寸，离开后保留该尺寸；完整进入时使用完整终端尺寸。占用、失联或输出不可用时显示“无法监控”，不自动接管。监控主界面左右键不响应；弹窗、输入框保留方向键操作。
 
-Broker 崩溃后的 PTY 无法由新进程接管，`recover` 只协调失联元数据。关机、OOM 和主机登录策略清理进程也可能结束任务。已实测和仅交叉编译的平台分别列在[兼容性表](docs/compatibility.md)，不以构建成功代替运行验收。
+Broker 崩溃后的 PTY 无法由新进程接管，`recover` 只协调失联元数据。关机、OOM 和主机登录策略清理进程也可能结束任务。已实测和仅交叉编译的平台分别列在[兼容性表](docs/compatibility.md)。
 
-## 开发与验收
+## 开发与测试
 
 ```sh
 make check
@@ -86,7 +86,7 @@ make acceptance PYTHON=.venv/bin/python
 python3 scripts/third_party_notices.py --check
 ```
 
-验收使用独立临时状态，不连接用户原有任务。具体范围见[稳定性验收](docs/stability.md)。CI 已接通 [GitHub Actions](https://github.com/raywcm/mtask/actions)，以实际运行结果为准；本地验收与托管 CI 分别记录。
+测试使用临时状态目录。各组脚本见[测试说明](docs/stability.md)，CI 结果见 [GitHub Actions](https://github.com/raywcm/mtask/actions)。
 
 默认状态目录为 `$XDG_STATE_HOME/mtask` 或 `~/.local/state/mtask`，可通过 `--state-dir` / `MTASK_STATE_DIR` 覆盖。目录 0700，元数据和日志 0600，Socket 双向检查 UID。日志只记录输出，保留两个约 8 MiB 文件；参数和输出可能包含业务信息，`logs --raw` 会输出原始终端控制序列。
 

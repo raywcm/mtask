@@ -1,10 +1,10 @@
-# Reproducible stability acceptance
+# Testing
 
-All tests below create isolated temporary state. They do not connect to, resize,
-stop, delete, or take over the operator's existing tasks. Runtime binaries should
-be replaced atomically; do not overwrite an executable inode used by a broker.
+Tests create temporary tasks and state directories. Existing tasks are left
+alone. Build to a new file or use atomic replacement when updating an executable
+that may still be used by a broker.
 
-## Local acceptance
+## Run the suite
 
 Requirements: Linux/macOS, Go 1.26+, Python 3, and the test dependency pyte.
 
@@ -16,8 +16,8 @@ make acceptance PYTHON=.venv/bin/python
 ```
 
 The runner saves per-suite output, exit status, platform, version and elapsed time
-to `dist/acceptance/local.json`. It stops on failure. Generated reports and binaries
-are excluded from Git; summarize verified results in the development log.
+to `dist/acceptance/local.json`. It stops on failure. Reports and binaries are
+excluded from Git.
 
 For race-enabled terminal acceptance, build to a new path first:
 
@@ -44,9 +44,9 @@ The `make build` target already uses a temporary file and atomic rename.
 | tui_exit_regression.py | Ctrl+C and INT/TERM/HUP in five pages, shell cells/cursor/termios preservation, monitor lease release and no task stop |
 | stress.py | Bounded 16-task/5-second concurrent health observation, broker RSS sampling and cleanup |
 
-The short soak is a regression check, not evidence of leak freedom or multi-day
-reliability. Use `scripts/stress.py --tasks 32 --seconds 3600` for a longer
-machine-specific experiment and report task count, duration, RSS and failures.
+The default soak runs for five seconds. For a longer run, use
+`scripts/stress.py --tasks 32 --seconds 3600`. Record task count, duration, RSS
+and any failures when comparing results.
 
 ## Optional installed-app smoke
 
@@ -54,11 +54,9 @@ machine-specific experiment and report task count, duration, RSS and failures.
 .venv/bin/python scripts/app_smoke.py ./bin/mtask
 ```
 
-This opens installed Codex/OpenCode without submitting model prompts, compares
-startup output availability, and checks original PIDs through mixed attach/detach
-rounds. Missing executables are skipped. Authentication or network failure must
-be recorded as a limitation; a surviving process does not prove a correct screen
-or a successful coding workflow. Review the result before declaring a pass.
+This starts installed Codex/OpenCode, collects startup output and checks PIDs
+across attach/detach rounds. It submits no model requests and skips missing
+executables. Screen layout and interactive workflows need separate testing.
 
 ## Old-broker compatibility
 
@@ -73,7 +71,7 @@ Keep an immutable older binary outside the checkout and run:
 negative checks specifically require a **pre-v0.3.0** broker without the new-mode
 capability. A recent broker is not a suitable negative fixture.
 
-## Remote verification and evidence
+## Run on another host
 
 Upload a completed binary and these test scripts to a temporary remote directory.
 Run against an isolated state directory as an unprivileged user. Record the
@@ -84,17 +82,17 @@ not attach to or resize those user tasks.
 
 macOS and Ubuntu ARM64 execution, build-only targets, and pending native package
 manager/GUI-terminal checks are separated in the [compatibility matrix](compatibility.md).
-No hosted-CI success is claimed until the configured workflow actually runs.
+Hosted runs are listed in [GitHub Actions](https://github.com/raywcm/mtask/actions).
 
 ## Demo recording
 
-The checked-in GIF and asciinema v2 recording come from an actual temporary shell
-session, not fabricated terminal content. To regenerate with Pillow:
+The GIF and asciinema recording show a temporary shell session. Regenerate them
+with Pillow:
 
 ```sh
 .venv/bin/pip install -r scripts/requirements-demo.txt
 .venv/bin/python scripts/record_demo.py --binary ./bin/mtask --font /path/to/monospace.ttf
 ```
 
-The default font is Menlo on macOS. Use a local monospace font on Linux. Captions
-describe the recorded actions; no AI requests or SSH reconnects are performed.
+The default font is Menlo on macOS. On Linux, pass the path to a local monospace
+font.

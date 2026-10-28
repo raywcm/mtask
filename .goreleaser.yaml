@@ -48,6 +48,6 @@ snapshot:
   version_template: '0.4.3-dev'
 changelog:
   disable: true
-# Public publishing is deliberately disabled at the user's request.
+# Public releases are disabled during development.
 release:
   disable: true
