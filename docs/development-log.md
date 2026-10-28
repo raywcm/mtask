@@ -448,3 +448,8 @@ v1 增加可选 attach_mode/capabilities 字段和协商后的 Notice(12)。新�
 通过用户现有 Safari 登录，确认所有者 raywcm，以 Private 可见性创建 https://github.com/raywcm/mtask。没有开启公开可见性、发布 Release、增加协作者或生成凭据。HTTPS Git 认证返回 Invalid username or token，网页登录与命令行 Git 凭据是不同入口；后续推送状态另记。
 
 Git 推送前认证检查：使用官方公布的 ED25519 主机公钥放入独立临时 known_hosts 严格验证后，现有 SSH 登录仍返回 Permission denied (publickey)。未关闭主机校验、添加 SSH 授权、生成令牌或改变账号安全设置。私有远端已建，本地提交与全部源码可审阅；推送等待用户完成 Git 身份验证，不把浏览器登录误当作 Git 推送权限。
+
+
+## 2026-10-28 — 私有远端推送授权
+
+用户确认添加只针对 raywcm/mtask 的读写部署密钥，并亲自完成 GitHub 的通行密钥/Touch ID 身份验证。GitHub 设置页已显示 mtask-local-2026-10-28 为 Read/write，指纹与本机专用公钥一致。私钥仅保存在本机 ~/.ssh，0600 权限；仓库本地 Git 配置使用该专用密钥及经官方指纹校验的主机密钥文件，没有修改全局 Git/SSH 配置，没有授予其他仓库权限或公开仓库。
