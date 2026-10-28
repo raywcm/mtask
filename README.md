@@ -115,8 +115,9 @@ python3 scripts/third_party_notices.py --check
 ```
 
 Acceptance tests use isolated temporary state and do not attach to user tasks.
-See [stability acceptance](docs/stability.md) for scope and evidence. The existing
-CI workflow is configuration until it runs in an actual hosted repository.
+See [stability acceptance](docs/stability.md) for scope and evidence. CI runs on pushes and pull requests; inspect the actual results in
+[GitHub Actions](https://github.com/raywcm/mtask/actions). Local acceptance
+evidence and hosted CI results are recorded separately.
 
 The default state directory is `$XDG_STATE_HOME/mtask` or `~/.local/state/mtask`;
 `--state-dir` and `MTASK_STATE_DIR` override it. Directories are private (0700),

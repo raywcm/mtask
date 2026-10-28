@@ -86,7 +86,7 @@ make acceptance PYTHON=.venv/bin/python
 python3 scripts/third_party_notices.py --check
 ```
 
-验收使用独立临时状态，不连接用户原有任务。具体范围见[稳定性验收](docs/stability.md)。CI 已配置，实际托管运行结果需在远端仓库创建后取得。
+验收使用独立临时状态，不连接用户原有任务。具体范围见[稳定性验收](docs/stability.md)。CI 已接通 [GitHub Actions](https://github.com/raywcm/mtask/actions)，以实际运行结果为准；本地验收与托管 CI 分别记录。
 
 默认状态目录为 `$XDG_STATE_HOME/mtask` 或 `~/.local/state/mtask`，可通过 `--state-dir` / `MTASK_STATE_DIR` 覆盖。目录 0700，元数据和日志 0600，Socket 双向检查 UID。日志只记录输出，保留两个约 8 MiB 文件；参数和输出可能包含业务信息，`logs --raw` 会输出原始终端控制序列。
 

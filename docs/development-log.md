@@ -453,3 +453,5 @@ Git 推送前认证检查：使用官方公布的 ED25519 主机公钥放入独�
 ## 2026-10-28 — 私有远端推送授权
 
 用户确认添加只针对 raywcm/mtask 的读写部署密钥，并亲自完成 GitHub 的通行密钥/Touch ID 身份验证。GitHub 设置页已显示 mtask-local-2026-10-28 为 Read/write，指纹与本机专用公钥一致。私钥仅保存在本机 ~/.ssh，0600 权限；仓库本地 Git 配置使用该专用密钥及经官方指纹校验的主机密钥文件，没有修改全局 Git/SSH 配置，没有授予其他仓库权限或公开仓库。
+
+首次推送完成：main 已成功推送到私有远端，6dbd12f57357ba0bce3248ec4b432223fdf8d9fd 与本地提交逐字一致，分支建立 origin/main 跟踪。GitHub 页面已显示源代码、MIT、中英文文档及演示，仍标记 Private，没有 Release 或 Packages。首次 push 自动触发 CI，检查状态为 pending；不把触发成功表述为托管测试通过。
