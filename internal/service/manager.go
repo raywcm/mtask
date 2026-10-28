@@ -14,13 +14,13 @@ import (
 	"time"
 
 	"github.com/charmbracelet/x/ansi"
-	"github.com/raywcm/mtask/internal/config"
-	"github.com/raywcm/mtask/internal/daemon"
-	"github.com/raywcm/mtask/internal/history"
-	"github.com/raywcm/mtask/internal/ipc"
-	"github.com/raywcm/mtask/internal/metrics"
-	"github.com/raywcm/mtask/internal/store"
-	"github.com/raywcm/mtask/internal/task"
+	"github.com/raywcm/taskdock/internal/config"
+	"github.com/raywcm/taskdock/internal/daemon"
+	"github.com/raywcm/taskdock/internal/history"
+	"github.com/raywcm/taskdock/internal/ipc"
+	"github.com/raywcm/taskdock/internal/metrics"
+	"github.com/raywcm/taskdock/internal/store"
+	"github.com/raywcm/taskdock/internal/task"
 )
 
 type Manager struct {
@@ -176,7 +176,7 @@ func (m *Manager) Create(ctx context.Context, name string, argv []string, dir st
 		defer func() { _ = history.Ensure(m.Store) }()
 	}
 	if err := m.launch(ctx, id); err != nil {
-		return task.Record{Spec: spec}, fmt.Errorf("task %s: %w (inspect with mtask show %s)", id, err, id)
+		return task.Record{Spec: spec}, fmt.Errorf("task %s: %w (inspect with tdock show %s)", id, err, id)
 	}
 	r, err := m.Store.Load(context.Background(), id)
 	return r, err
@@ -323,7 +323,7 @@ func (m *Manager) Delete(ctx context.Context, ref string) error {
 	}
 	defer release()
 	if r.Runtime != nil && r.Runtime.State != task.Exited && r.Runtime.State != task.Failed {
-		return errors.New("broker disappeared; run mtask recover before deleting")
+		return errors.New("broker disappeared; run tdock recover before deleting")
 	}
 	socket, err := ipc.SocketPath(m.Store.Root(), r.Spec.ID)
 	if err != nil {

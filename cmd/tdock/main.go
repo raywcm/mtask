@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/raywcm/mtask/internal/cli"
+	"github.com/raywcm/taskdock/internal/cli"
 )
 
 func main() {
@@ -19,7 +19,7 @@ func main() {
 		if errors.As(err, &exit) {
 			os.Exit(exit.Code)
 		}
-		fmt.Fprintln(os.Stderr, "MTasK:", err)
+		fmt.Fprintln(os.Stderr, "TaskDock:", err)
 		os.Exit(1)
 	}
 }

@@ -9,8 +9,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/raywcm/taskdock/internal/task"
 	"golang.org/x/sys/unix"
-	"github.com/raywcm/mtask/internal/task"
 )
 
 func (s *JSON) Root() string { return s.root }

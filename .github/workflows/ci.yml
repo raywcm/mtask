@@ -20,6 +20,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
@@ -29,25 +31,31 @@ jobs:
       - run: python3 scripts/third_party_notices.py --check
       - name: Check release installer
         run: python3 scripts/installer_test.py
-      - run: go build -race -o bin/mtask ./cmd/mtask
+      - run: go build -race -o bin/tdock ./cmd/tdock
       - run: python3 scripts/integration.py
+      - name: Verify upgrade from mtask
+        run: |
+          mkdir -p "$RUNNER_TEMP/taskdock-legacy"
+          git archive v0.5.2 | tar -x -C "$RUNNER_TEMP/taskdock-legacy"
+          (cd "$RUNNER_TEMP/taskdock-legacy" && go build -o "$RUNNER_TEMP/legacy-mtask" ./cmd/mtask)
+          python3 scripts/rename_regression.py bin/tdock "$RUNNER_TEMP/legacy-mtask"
       - name: Verify visible screen on reconnect
         run: |
-          python3 -m venv "$RUNNER_TEMP/mtask-screen"
-          "$RUNNER_TEMP/mtask-screen/bin/pip" install -r scripts/requirements-screen.txt
-          "$RUNNER_TEMP/mtask-screen/bin/python" scripts/screen_regression.py bin/mtask
-          "$RUNNER_TEMP/mtask-screen/bin/python" scripts/ui_regression.py bin/mtask
+          python3 -m venv "$RUNNER_TEMP/tdock-screen"
+          "$RUNNER_TEMP/tdock-screen/bin/pip" install -r scripts/requirements-screen.txt
+          "$RUNNER_TEMP/tdock-screen/bin/python" scripts/screen_regression.py bin/tdock
+          "$RUNNER_TEMP/tdock-screen/bin/python" scripts/ui_regression.py bin/tdock
 
-          "$RUNNER_TEMP/mtask-screen/bin/python" scripts/connection_modes_regression.py bin/mtask
-          "$RUNNER_TEMP/mtask-screen/bin/python" scripts/tmux_cli_regression.py bin/mtask
-          "$RUNNER_TEMP/mtask-screen/bin/python" scripts/monitor_control_regression.py bin/mtask
-          "$RUNNER_TEMP/mtask-screen/bin/python" scripts/search_regression.py bin/mtask
-          "$RUNNER_TEMP/mtask-screen/bin/python" scripts/idle_cpu_regression.py bin/mtask
-          "$RUNNER_TEMP/mtask-screen/bin/python" scripts/monitor_dialog_regression.py bin/mtask
-          "$RUNNER_TEMP/mtask-screen/bin/python" scripts/history_view_regression.py bin/mtask
-          "$RUNNER_TEMP/mtask-screen/bin/python" scripts/history_regression.py bin/mtask
-          "$RUNNER_TEMP/mtask-screen/bin/python" scripts/tui_exit_regression.py bin/mtask
-          "$RUNNER_TEMP/mtask-screen/bin/python" scripts/detach_keys_regression.py bin/mtask
+          "$RUNNER_TEMP/tdock-screen/bin/python" scripts/connection_modes_regression.py bin/tdock
+          "$RUNNER_TEMP/tdock-screen/bin/python" scripts/tmux_cli_regression.py bin/tdock
+          "$RUNNER_TEMP/tdock-screen/bin/python" scripts/monitor_control_regression.py bin/tdock
+          "$RUNNER_TEMP/tdock-screen/bin/python" scripts/search_regression.py bin/tdock
+          "$RUNNER_TEMP/tdock-screen/bin/python" scripts/idle_cpu_regression.py bin/tdock
+          "$RUNNER_TEMP/tdock-screen/bin/python" scripts/monitor_dialog_regression.py bin/tdock
+          "$RUNNER_TEMP/tdock-screen/bin/python" scripts/history_view_regression.py bin/tdock
+          "$RUNNER_TEMP/tdock-screen/bin/python" scripts/history_regression.py bin/tdock
+          "$RUNNER_TEMP/tdock-screen/bin/python" scripts/tui_exit_regression.py bin/tdock
+          "$RUNNER_TEMP/tdock-screen/bin/python" scripts/detach_keys_regression.py bin/tdock
   package:
     runs-on: ubuntu-24.04
     needs: test
@@ -67,6 +75,6 @@ jobs:
       - run: python3 scripts/ci_install_test.py
       - uses: actions/upload-artifact@v4
         with:
-          name: mtask-local-packages
+          name: tdock-local-packages
           path: dist/
           retention-days: 14

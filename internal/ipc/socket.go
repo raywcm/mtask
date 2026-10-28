@@ -16,8 +16,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/raywcm/mtask/internal/protocol"
-	"github.com/raywcm/mtask/internal/task"
+	"github.com/raywcm/taskdock/internal/protocol"
+	"github.com/raywcm/taskdock/internal/task"
 )
 
 const Timeout = 2 * time.Second
@@ -30,6 +30,10 @@ func PrivateDir(dir string) error {
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return err
 	}
+	return checkPrivateDir(dir)
+}
+
+func checkPrivateDir(dir string) error {
 	info, err := os.Lstat(dir)
 	if err != nil {
 		return err
@@ -42,27 +46,56 @@ func PrivateDir(dir string) error {
 }
 
 func SocketPath(state string, id task.ID) (string, error) {
+	preferred, err := socketPath(state, id, "tdock", true)
+	if err != nil {
+		return "", err
+	}
+	if _, err := os.Lstat(preferred); err == nil {
+		return preferred, nil
+	} else if !os.IsNotExist(err) {
+		return "", err
+	}
+	// Only look in existing private legacy directories. Never create the old
+	// namespace for a fresh installation, and never follow a legacy symlink.
+	legacy, err := socketPath(state, id, "mtask", false)
+	if err == nil {
+		if info, err := os.Lstat(legacy); err == nil {
+			stat, ok := info.Sys().(*syscall.Stat_t)
+			if !ok || info.Mode()&os.ModeSocket == 0 || info.Mode().Perm()&0077 != 0 || int(stat.Uid) != os.Getuid() {
+				return "", errors.New("unsafe legacy socket")
+			}
+			return legacy, nil
+		}
+	}
+	return preferred, nil
+}
+
+func socketPath(state string, id task.ID, namespace string, create bool) (string, error) {
 	if err := id.Validate(); err != nil {
 		return "", err
+	}
+	private := checkPrivateDir
+	if create {
+		private = PrivateDir
 	}
 	parent := os.Getenv("XDG_RUNTIME_DIR")
 	if parent != "" {
 		if !filepath.IsAbs(parent) {
 			return "", errors.New("XDG_RUNTIME_DIR must be absolute")
 		}
-		if err := PrivateDir(parent); err != nil {
+		if err := private(parent); err != nil {
 			return "", err
 		}
-		parent = filepath.Join(parent, "mtask")
+		parent = filepath.Join(parent, namespace)
 	} else {
-		parent = fmt.Sprintf("/tmp/mtask-%d", os.Getuid())
+		parent = fmt.Sprintf("/tmp/%s-%d", namespace, os.Getuid())
 	}
-	if err := PrivateDir(parent); err != nil {
+	if err := private(parent); err != nil {
 		return "", err
 	}
 	hash := sha256.Sum256([]byte(filepath.Clean(state)))
 	dir := filepath.Join(parent, fmt.Sprintf("%x", hash[:6]))
-	if err := PrivateDir(dir); err != nil {
+	if err := private(dir); err != nil {
 		return "", err
 	}
 	name := filepath.Join(dir, string(id)+".sock")

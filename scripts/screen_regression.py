@@ -160,9 +160,9 @@ def plain_shell(h):
 
 def main():
     verify_scroll_regions()
-    new_binary=pathlib.Path(sys.argv[1] if len(sys.argv)>1 else 'bin/mtask').resolve()
+    new_binary=pathlib.Path(sys.argv[1] if len(sys.argv)>1 else 'bin/tdock').resolve()
     old_binary=pathlib.Path(sys.argv[2]).resolve() if len(sys.argv)>2 else new_binary
-    with tempfile.TemporaryDirectory(prefix='mtask-screen-') as root:
+    with tempfile.TemporaryDirectory(prefix='tdock-screen-') as root:
         h=Harness(root,old_binary)
         try:
             reenter(h,new_binary,'curses-fixture',[sys.executable,'-c',CURSES_LIKE],['SCREEN-TITLE','STATIC-LABEL'])

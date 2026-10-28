@@ -43,9 +43,9 @@ def build(source,destination):
     index=('\n'.join(packages)+'\n').encode()
     (destination/'Packages').write_bytes(index)
     (destination/'Packages.gz').write_bytes(gzip.compress(index,mtime=0))
-    release=['Origin: mtask local build','Label: mtask','Suite: local','Codename: local',
+    release=['Origin: tdock local build','Label: tdock','Suite: local','Codename: local',
              'Date: '+datetime.datetime.now(datetime.timezone.utc).strftime('%a, %d %b %Y %H:%M:%S +0000'),
-             'Architectures: amd64 arm64','Description: Local mtask package repository','SHA256:']
+             'Architectures: amd64 arm64','Description: Local tdock package repository','SHA256:']
     for name in ('Packages','Packages.gz'):
         data=(destination/name).read_bytes()
         release.append(' '+hashlib.sha256(data).hexdigest()+' '+str(len(data))+' '+name)

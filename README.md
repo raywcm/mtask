@@ -1,19 +1,22 @@
-# MTasK
+# TaskDock
 
 A terminal task manager for Linux and macOS. Keep programs running after an SSH
 disconnect, then return to them from a task list. No tmux or screen required.
 
-![mtask demo](docs/assets/demo.gif)
+TaskDock was previously named mtask. The command is now `tdock`; existing sessions
+and settings are preserved on upgrade.
+
+![TaskDock demo](docs/assets/demo.gif)
 
 ## Install
 
 ```sh
-curl -fsSL https://github.com/raywcm/mtask/releases/latest/download/install.sh | sh
+curl -fsSL https://github.com/raywcm/taskdock/releases/latest/download/install.sh | sh
 ```
 
 Installs to `~/.local/bin` after SHA-256 verification. Supports Linux and macOS
 on amd64/arm64. Add `~/.local/bin` to PATH. Existing tasks keep running on upgrade.
-See [releases](https://github.com/raywcm/mtask/releases) for archives and Deb/RPM
+See [releases](https://github.com/raywcm/taskdock/releases) for archives and Deb/RPM
 packages, or [installation options](docs/installation.md) for a specific version
 or installation directory.
 
@@ -22,24 +25,24 @@ or installation directory.
 Requires Go 1.26+, Git and make. Go is not needed at runtime.
 
 ```sh
-git clone https://github.com/raywcm/mtask.git
-cd mtask
+git clone https://github.com/raywcm/taskdock.git
+cd taskdock
 make build
-./scripts/install.sh --prefix "$HOME/.local" ./bin/mtask
+./scripts/install.sh --prefix "$HOME/.local" ./bin/tdock
 ```
 
-Add `~/.local/bin` to PATH, or run `./bin/mtask` directly.
+Add `~/.local/bin` to PATH, or run `./bin/tdock` directly.
 
 ## Use
 
 ```sh
-mtask new -s work -- bash
+tdock new -s work -- bash
 # Press F12 to detach. The task keeps running.
-mtask
+tdock
 # Select work and press Enter to reconnect.
 ```
 
-When using SSH, run mtask on the remote host. Reconnect to the same host and
+When using SSH, run tdock on the remote host. Reconnect to the same host and
 account after a dropped connection. Tasks do not survive a host reboot.
 
 | In the task list | Action |
@@ -56,7 +59,7 @@ account after a dropped connection. Tasks do not survive a host reboot.
 Inside a task, **F12** or **Ctrl+B, d** returns to the list.
 For compatibility, **Ctrl+B, Ctrl+D** (hold Ctrl while pressing B then D) and
 **Ctrl+], d** also work. Standalone **Ctrl+D** and **Ctrl+C** go to the application.
-On Mac keyboards, F12 may require Fn. Use `mtask attach --no-escape TASK` to send
+On Mac keyboards, F12 may require Fn. Use `tdock attach --no-escape TASK` to send
 all keys, including F12, to the application.
 
 New sessions created from the TUI open selected in the monitor, with a narrow
@@ -68,13 +71,13 @@ the monitor. The monitor has no fullscreen shortcut. Ctrl+Enter is ignored.
 ## CLI
 
 ```sh
-mtask new -ds build -- make test
-mtask ls --json
-mtask logs --follow build
-mtask stop build
-mtask delete build
-mtask attach -t work -r     # Or --shared / --takeover
-mtask settings set history-retention off
+tdock new -ds build -- make test
+tdock ls --json
+tdock logs --follow build
+tdock stop build
+tdock delete build
+tdock attach -t work -r     # Or --shared / --takeover
+tdock settings set history-retention off
 ```
 
 Common tmux session commands and flags are supported: `new-session`/`new`,
@@ -93,7 +96,7 @@ uses the preview pane's PTY size and retains it when leaving.
 - [Build and packaging](docs/installation.md) · [Testing](docs/stability.md)
 - [Architecture](docs/architecture.md) · [Protocol](docs/protocol.md)
 - [Language packs](docs/i18n.md) · [Roadmap](docs/roadmap.md)
-- [GitHub Actions](https://github.com/raywcm/mtask/actions)
+- [GitHub Actions](https://github.com/raywcm/taskdock/actions)
 
 [MIT License](LICENSE). Dependency licenses are included in
 [third-party notices](THIRD_PARTY_NOTICES.md).

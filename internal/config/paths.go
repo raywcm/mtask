@@ -10,7 +10,10 @@ import (
 // and their ownership checks are managed by the ipc package.
 func StateDir(override string) (string, error) {
 	if override == "" {
-		override = os.Getenv("MTASK_STATE_DIR")
+		override = os.Getenv("TDOCK_STATE_DIR")
+	}
+	if override == "" {
+		override = os.Getenv("MTASK_STATE_DIR") // Existing installations keep their state.
 	}
 	if override != "" {
 		if !filepath.IsAbs(override) {
@@ -29,5 +32,19 @@ func StateDir(override string) (string, error) {
 	if !filepath.IsAbs(base) {
 		return "", fmt.Errorf("XDG_STATE_HOME must be absolute")
 	}
-	return filepath.Join(base, "mtask"), nil
+	preferred := filepath.Join(base, "taskdock")
+	if _, err := os.Lstat(preferred); err == nil {
+		return preferred, nil
+	} else if !os.IsNotExist(err) {
+		return "", err
+	}
+	// Live brokers retain absolute storage paths. Reuse their directory in
+	// place; moving it would interrupt their log and metadata writes.
+	legacy := filepath.Join(base, "mtask")
+	if info, err := os.Lstat(legacy); err == nil && info.IsDir() {
+		return legacy, nil
+	} else if err != nil && !os.IsNotExist(err) {
+		return "", err
+	}
+	return preferred, nil
 }

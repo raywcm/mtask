@@ -3,8 +3,8 @@ package history
 import (
 	"context"
 	"errors"
-	"github.com/raywcm/mtask/internal/store"
-	"github.com/raywcm/mtask/internal/task"
+	"github.com/raywcm/taskdock/internal/store"
+	"github.com/raywcm/taskdock/internal/task"
 	"os"
 	"path/filepath"
 	"testing"

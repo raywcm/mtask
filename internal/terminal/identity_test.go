@@ -5,14 +5,14 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/x/ansi"
-	"github.com/raywcm/mtask/internal/i18n"
-	"github.com/raywcm/mtask/internal/task"
+	"github.com/raywcm/taskdock/internal/i18n"
+	"github.com/raywcm/taskdock/internal/task"
 )
 
 func TestSessionIdentityShowsNameShortIDAndLocalizedHint(t *testing.T) {
 	spec := task.Spec{Name: "代码会话", ID: "ff709424d117a8b1564b3eb13e7b6580"}
 	got := newIdentity(spec, i18n.New("zh-CN"), task.Size{Cols: 100, Rows: 24}, false)
-	if got.title != "MTasK · 代码会话 [ff709424]" || strings.Contains(got.banner(), string(spec.ID)) {
+	if got.title != "TaskDock · 代码会话 [ff709424]" || strings.Contains(got.banner(), string(spec.ID)) {
 		t.Fatalf("incorrect identity: %+v", got)
 	}
 	if !strings.Contains(got.banner(), "代码会话 [ff709424]") || !strings.Contains(got.banner(), "Ctrl+B") || !strings.Contains(got.banner(), "断开") {

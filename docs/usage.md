@@ -3,18 +3,18 @@
 ## Create and reconnect
 
 ```sh
-mtask new -s work -- bash
-mtask new -ds build -- make test
-mtask new -c /absolute/project -s editor -- vim README.md
-mtask attach work
+tdock new -s work -- bash
+tdock new -ds build -- make test
+tdock new -c /absolute/project -s editor -- vim README.md
+tdock attach work
 ```
 
 Interactive `new` enters the task immediately. `-d`, `--json` or non-terminal input
 starts it in the background. Omit the command to use `$SHELL` or `/bin/sh`.
 A single quoted command runs through `$SHELL -c`, for example
-`mtask new -ds build 'make test && make build'`. Multiple arguments run directly
+`tdock new -ds build 'make test && make build'`. Multiple arguments run directly
 as argv. Use `--` before a command to keep even a single argument literal.
-Place mtask flags before the command; remaining flags belong to the application.
+Place tdock flags before the command; remaining flags belong to the application.
 Tasks accept names, full IDs or unique ID prefixes of at least four characters.
 
 ## tmux session commands
@@ -47,11 +47,11 @@ Existing scripts should replace `list` with `ls`, `status` with `show`, `rm` wit
 Compatibility shortcuts are documented here rather than in the interface:
 **Ctrl+B, Ctrl+D** (keep Ctrl held while pressing B then D) and **Ctrl+], d**.
 
-From the manager, detach returns to the list. A direct `mtask attach` returns to
+From the manager, detach returns to the list. A direct `tdock attach` returns to
 the shell. The task keeps running. Standalone Ctrl+D and Ctrl+C retain the
 application's behavior. Press a prefix twice to send it literally.
 
-`mtask attach --no-escape TASK` disables all detach shortcuts, including F12.
+`tdock attach --no-escape TASK` disables all detach shortcuts, including F12.
 Close the terminal or end the frontend to disconnect in that mode. Bracketed
 paste passes through without interpreting detach keys. Incomplete escape
 sequences wait up to 50 ms before being forwarded.
@@ -61,15 +61,15 @@ sequences wait up to 50 ms before being forwarded.
 The title row shows the main shortcuts; F1/? opens the full list.
 
 ```sh
-mtask ls --json
-mtask show work
-mtask rename work work-old
-mtask stop work-old
-mtask ls --history --json
-mtask logs work-old
-mtask logs --follow work-old
-mtask logs --tail 4096 work-old
-mtask delete work-old
+tdock ls --json
+tdock show work
+tdock rename work work-old
+tdock stop work-old
+tdock ls --history --json
+tdock logs work-old
+tdock logs --follow work-old
+tdock logs --tail 4096 work-old
+tdock delete work-old
 ```
 
 `stop` sends TERM, then KILL after one second if necessary. Deletion requires a
@@ -81,8 +81,8 @@ sequences; `logs --raw` writes the original bytes. `--tail` counts bytes.
 Stopped records and logs expire after one hour by default:
 
 ```sh
-mtask settings set history-retention 24h
-mtask settings set history-retention off
+tdock settings set history-retention 24h
+tdock settings set history-retention off
 ```
 
 In the Stop tab, Enter opens retained output. Use arrows, PgUp/PgDn, Home/End to
@@ -91,10 +91,10 @@ navigate; Esc/q returns. Viewing history does not restart the task.
 ## Multiple clients
 
 ```sh
-mtask attach work                # Exclusive; returns busy if occupied
-mtask attach work --read-only    # No application input or resize
-mtask attach work --shared       # All controllers may type
-mtask attach work --takeover     # Disconnect existing controllers; keep readers
+tdock attach work                # Exclusive; returns busy if occupied
+tdock attach work --read-only    # No application input or resize
+tdock attach work --shared       # All controllers may type
+tdock attach work --takeover     # Disconnect existing controllers; keep readers
 ```
 
 The flags are mutually exclusive and require v0.3.0+ brokers. The TUI's `c` menu
@@ -135,13 +135,13 @@ Settings shows the installed version. Open the editor with Enter or `,`.
 and discards unsaved changes.
 
 ```sh
-mtask settings --json
-mtask settings set language en
-mtask settings set theme dark
-mtask settings set refresh 2
-mtask settings set resources off
-mtask settings set default-tab stop
-mtask settings reset
+tdock settings --json
+tdock settings set language en
+tdock settings set theme dark
+tdock settings set refresh 2
+tdock settings set resources off
+tdock settings set default-tab stop
+tdock settings reset
 ```
 
 Languages: auto, en, zh-CN, ja, es, fr. Themes: auto, dark, light. Refresh: 1, 2 or
@@ -150,13 +150,15 @@ than once.
 
 ## Storage and recovery
 
-State directory precedence: `--state-dir`, `MTASK_STATE_DIR`,
-`$XDG_STATE_HOME/mtask`, then `~/.local/state/mtask`. Directories are 0700; metadata
+State directory precedence: `--state-dir`, `TDOCK_STATE_DIR`, then
+`$XDG_STATE_HOME/taskdock` or `~/.local/state/taskdock`. Existing installations
+reuse their `mtask` directory in place and accept `MTASK_STATE_DIR` as a fallback;
+live brokers and history remain accessible without moving files. Directories are 0700; metadata
 and logs are 0600. Socket peers verify UID. Arguments and output may contain
 sensitive data.
 
-After SSH loss, reconnect to the same host/account and run mtask again. Reboot,
+After SSH loss, reconnect to the same host/account and run tdock again. Reboot,
 OOM or host login-session cleanup can end tasks. A crashed broker's PTY cannot
-be recovered; `mtask recover TASK` reconciles stale records without signalling
+be recovered; `tdock recover TASK` reconciles stale records without signalling
 old PIDs. Installation replaces the executable atomically and leaves existing
 brokers running. See [compatibility](compatibility.md) for terminal limitations.

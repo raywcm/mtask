@@ -51,7 +51,7 @@ def image(terminal, caption, font, bold, native_colors):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--binary', default='bin/mtask')
+    parser.add_argument('--binary', default='bin/tdock')
     parser.add_argument('--font', default='/System/Library/Fonts/Menlo.ttc')
     args = parser.parse_args()
     font = ImageFont.truetype(args.font, 16)
@@ -66,14 +66,14 @@ def main():
     columns, rows = 100, 24
     frames, durations, events, chapters = [], [], [], []
     native_colors = {'#909bae', '#161d28'}
-    with tempfile.TemporaryDirectory(prefix='mtask-demo-') as root:
+    with tempfile.TemporaryDirectory(prefix='tdock-demo-') as root:
         ENV['HOME'] = root
         ENV.pop('ENV', None)
         h = Harness(root, pathlib.Path(args.binary).resolve())
         try:
             h.cli('settings','set','language','en')
             h.cli('settings','set','history-retention','off')
-            project = pathlib.Path(root)/'mtask'; project.mkdir()
+            project = pathlib.Path(root)/'taskdock'; project.mkdir()
             for name in ['cmd', 'docs', 'internal', 'scripts', 'examples']:
                 (project/name).mkdir()
             for name in ['README.md', 'go.mod', 'Makefile']:
@@ -83,7 +83,7 @@ def main():
             def create(name, *command):
                 record=json.loads(h.cli('new','-d','--json','--name',name,'--cwd',str(project),'--',*command).stdout)
                 return record['spec']['id']
-            dev=create('dev-shell','/usr/bin/env','PS1=mtask$ ','/bin/sh','-i')
+            dev=create('dev-shell','/usr/bin/env','PS1=tdock$ ','/bin/sh','-i')
             create('api-server',sys.executable,'-u','-m','http.server','0','--bind','127.0.0.1')
             create('docs-server',sys.executable,'-u','-m','http.server','0','--bind','127.0.0.1')
             watcher="import pathlib,time; p=pathlib.Path('.'); print('Watching cmd/, internal/, docs/',flush=True)\nwhile True:\n print('Files: '+str(sum(x.is_file() for x in p.rglob('*'))),flush=True);time.sleep(2)"
@@ -126,7 +126,7 @@ def main():
             colors={terminal.current.buffer[y][x].fg for y in range(rows) for x in range(columns)}
             assert '70e1c8' in colors, 'the application did not emit its normal accent color'
             scene('Task list · 8 running sessions',3)
-            os.write(fd,b'\r');wait_view(fd,terminal,lambda text:not terminal.alternate and 'mtask$' in text)
+            os.write(fd,b'\r');wait_view(fd,terminal,lambda text:not terminal.alternate and 'tdock$' in text)
             ls = 'ls -G' if sys.platform=='darwin' else 'ls --color=auto'
             os.write(fd,(ls+'\r').encode())
             wait_view(fd,terminal,lambda text:'examples' in text and 'README.md' in text)
@@ -190,9 +190,9 @@ def main():
     palette.putpalette([channel for rgb in colors[:256] for channel in rgb])
     gif=[frame.quantize(palette=palette,dither=Image.Dither.NONE) for frame in frames]
     gif[0].save(destination/'demo.gif',save_all=True,append_images=gif[1:],duration=durations,loop=0,optimize=True)
-    header={'version':2,'width':columns,'height':rows,'title':'mtask: multiple terminal sessions','env':{'TERM':'xterm-256color','COLORTERM':'truecolor'}}
+    header={'version':2,'width':columns,'height':rows,'title':'tdock: multiple terminal sessions','env':{'TERM':'xterm-256color','COLORTERM':'truecolor'}}
     (destination/'demo.cast').write_text('\n'.join(json.dumps(x,ensure_ascii=False) for x in [header,*events])+'\n')
-    preview=pathlib.Path(tempfile.gettempdir())/'mtask-demo-preview.png'
+    preview=pathlib.Path(tempfile.gettempdir())/'tdock-demo-preview.png'
     contact=Image.new('RGB',(1032*2,616*3),'#161d28')
     selections=[0,3,4,6,9,11] if htop else [0,1,3,5,8,10]
     for i,index in enumerate(selections):contact.paste(frames[chapters[index]['frame']],((i%2)*1032,(i//2)*616))

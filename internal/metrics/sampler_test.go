@@ -3,7 +3,7 @@ package metrics
 import (
 	"bufio"
 	"context"
-	"github.com/raywcm/mtask/internal/task"
+	"github.com/raywcm/taskdock/internal/task"
 	"os"
 	"os/exec"
 	"syscall"

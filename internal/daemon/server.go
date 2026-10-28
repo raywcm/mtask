@@ -14,12 +14,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/raywcm/mtask/internal/broker"
-	"github.com/raywcm/mtask/internal/ipc"
-	"github.com/raywcm/mtask/internal/protocol"
-	"github.com/raywcm/mtask/internal/ptyprocess"
-	"github.com/raywcm/mtask/internal/store"
-	"github.com/raywcm/mtask/internal/task"
+	"github.com/raywcm/taskdock/internal/broker"
+	"github.com/raywcm/taskdock/internal/ipc"
+	"github.com/raywcm/taskdock/internal/protocol"
+	"github.com/raywcm/taskdock/internal/ptyprocess"
+	"github.com/raywcm/taskdock/internal/store"
+	"github.com/raywcm/taskdock/internal/task"
 )
 
 type Ready struct {

@@ -8,7 +8,7 @@ Updated: 2026-10-28
 | --- | --- | --- |
 | macOS arm64 | Tested locally | Core terminal and process regression suites passed. |
 | Ubuntu 24.04.3 LTS arm64 | Tested on a server | Core terminal and process regression suites passed. SSH disconnect/reconnect was also tested. |
-| Linux amd64 | Cross-built | CI results are available in [Actions](https://github.com/raywcm/mtask/actions). |
+| Linux amd64 | Cross-built | CI results are available in [Actions](https://github.com/raywcm/taskdock/actions). |
 | macOS amd64 | Cross-built | Native Intel Mac testing is pending. |
 | Debian / RPM-based distributions | Package contents checked | Native package-manager install, upgrade and removal tests are pending. |
 
@@ -37,7 +37,7 @@ startup check, so its visible startup still needs testing.
 - **Host shutdown ends tasks.** Brokers survive terminal closure and SSH loss
   when the host permits background user processes. Reboot, OOM and login-session
   cleanup can terminate them.
-- **Reattach relies on application redraw.** mtask restores known terminal modes
+- **Reattach relies on application redraw.** tdock restores known terminal modes
   and briefly changes the PTY size to request a redraw. It does not restore a
   full screen snapshot or host-terminal scrollback. Unsupported extensions or an
   application that does not redraw can leave an incomplete screen.
@@ -51,7 +51,7 @@ startup check, so its visible startup still needs testing.
   connection; the same account can open another management client. Shared inputs
   can interfere. The oldest connected controller determines the PTY size.
 - **History has limits.** Stopped records and logs expire after one hour by
-  default. Use `mtask settings set history-retention off` to retain them.
+  default. Use `tdock settings set history-retention off` to retain them.
   Each task keeps two output files of approximately 8 MiB each.
 - **A lost broker cannot recover its PTY.** `recover` reconciles stale metadata
   without signalling old PIDs. Descendants that detached from the managed

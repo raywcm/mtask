@@ -15,8 +15,8 @@ import (
 	"github.com/creack/pty"
 	"golang.org/x/sys/unix"
 
-	"github.com/raywcm/mtask/internal/broker"
-	"github.com/raywcm/mtask/internal/task"
+	"github.com/raywcm/taskdock/internal/broker"
+	"github.com/raywcm/taskdock/internal/task"
 )
 
 type Factory struct{}

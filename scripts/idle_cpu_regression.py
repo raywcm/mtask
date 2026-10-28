@@ -25,8 +25,8 @@ def cpu(pid):
 
 
 def main():
-    binary = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else 'bin/mtask').resolve()
-    with tempfile.TemporaryDirectory(prefix='mtask-idle-cpu-') as root:
+    binary = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else 'bin/tdock').resolve()
+    with tempfile.TemporaryDirectory(prefix='tdock-idle-cpu-') as root:
         h = Harness(root, binary)
         try:
             h.cli('settings', 'set', 'language', 'en')

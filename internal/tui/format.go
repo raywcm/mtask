@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/x/ansi"
-	"github.com/raywcm/mtask/internal/task"
+	"github.com/raywcm/taskdock/internal/task"
 )
 
 func safe(text string) string {

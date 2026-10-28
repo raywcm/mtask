@@ -3,7 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
-	"github.com/raywcm/mtask/internal/i18n"
+	"github.com/raywcm/taskdock/internal/i18n"
 	"strings"
 	"time"
 )

@@ -1,4 +1,4 @@
-module github.com/raywcm/mtask
+module github.com/raywcm/taskdock
 
 go 1.26.0
 

@@ -22,7 +22,7 @@ func TestSettingsPersistLocalizeHelpAndPreserveJSON(t *testing.T) {
 		return out.String()
 	}
 	run("settings", "set", "language", "zh-CN")
-	if text := run("--help"); !strings.Contains(text, "用法") || !strings.Contains(text, "MTasK") {
+	if text := run("--help"); !strings.Contains(text, "用法") || !strings.Contains(text, "TaskDock") {
 		t.Fatalf("help was not localized/branded: %s", text)
 	}
 	var settings map[string]any
@@ -38,7 +38,7 @@ func TestSettingsPersistLocalizeHelpAndPreserveJSON(t *testing.T) {
 			t.Fatalf("English help missing: %s", text)
 		}
 	}
-	if text := run("--version"); text != "MTasK v"+Version+"\n" {
+	if text := run("--version"); text != "TaskDock v"+Version+"\n" {
 		t.Fatalf("version branding: %q", text)
 	}
 	if text := run("ls", "--json"); text != "[]\n" {

@@ -8,7 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/raywcm/mtask/internal/task"
+	"github.com/raywcm/taskdock/internal/task"
 )
 
 type historyState struct {

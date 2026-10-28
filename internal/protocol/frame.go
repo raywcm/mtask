@@ -8,7 +8,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/raywcm/mtask/internal/task"
+	"github.com/raywcm/taskdock/internal/task"
 )
 
 const (

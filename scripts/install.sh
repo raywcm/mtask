@@ -11,9 +11,9 @@ binary=$1
 [ -f "$binary" ] && [ -x "$binary" ] || { echo 'binary must be an executable file' >&2; exit 2; }
 "$binary" --version
 mkdir -p "$prefix/bin"
-stage=$(mktemp "$prefix/bin/.mtask.XXXXXX")
+stage=$(mktemp "$prefix/bin/.tdock.XXXXXX")
 trap 'test ! -f "$stage" || rm "$stage"' EXIT HUP INT TERM
 cp "$binary" "$stage"
 chmod 0755 "$stage"
-mv -f "$stage" "$prefix/bin/mtask"
-printf 'Installed %s\n' "$prefix/bin/mtask"
+mv -f "$stage" "$prefix/bin/tdock"
+printf 'Installed %s\n' "$prefix/bin/tdock"

@@ -8,13 +8,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/raywcm/mtask/internal/protocol"
-	"github.com/raywcm/mtask/internal/task"
+	"github.com/raywcm/taskdock/internal/protocol"
+	"github.com/raywcm/taskdock/internal/task"
 )
 
 func TestOldBrokerCannotSilentlyGrantReadOnlyInputControl(t *testing.T) {
 	t.Setenv("XDG_RUNTIME_DIR", "")
-	state, err := os.MkdirTemp("/tmp", "mtask-old-broker-")
+	state, err := os.MkdirTemp("/tmp", "tdock-old-broker-")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,4 +68,59 @@ func TestOldBrokerCannotSilentlyGrantReadOnlyInputControl(t *testing.T) {
 		t.Fatal(err)
 	}
 	_ = os.RemoveAll(filepath.Dir(path))
+}
+
+func TestLegacySocketDiscovery(t *testing.T) {
+	// Keep Unix paths short on both macOS and Linux.
+	runtime, err := os.MkdirTemp("/tmp", "tdock-ipc-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(runtime)
+	t.Setenv("XDG_RUNTIME_DIR", runtime)
+	id, _ := task.NewID()
+	state := filepath.Join(runtime, "state")
+	preferred, err := SocketPath(state, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(filepath.Join(runtime, "mtask")); !os.IsNotExist(err) {
+		t.Fatal("fresh installation created the legacy namespace")
+	}
+	legacy, err := socketPath(state, id, "mtask", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	listener, err := net.ListenUnix("unix", &net.UnixAddr{Name: legacy, Net: "unix"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	if err := os.Chmod(legacy, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := SocketPath(state, id); err != nil || got != legacy {
+		t.Fatalf("old live socket not found: %q %v", got, err)
+	}
+	if err := os.Chmod(legacy, 0666); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SocketPath(state, id); err == nil {
+		t.Fatal("unsafe legacy socket accepted")
+	}
+	if err := os.Remove(legacy); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(preferred, legacy); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SocketPath(state, id); err == nil {
+		t.Fatal("legacy socket symlink accepted")
+	}
+	if err := os.WriteFile(preferred, nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := SocketPath(state, id); err != nil || got != preferred {
+		t.Fatalf("preferred namespace lost priority: %q %v", got, err)
+	}
 }

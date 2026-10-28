@@ -3,7 +3,7 @@
 ## One-line install
 
 ```sh
-curl -fsSL https://github.com/raywcm/mtask/releases/latest/download/install.sh | sh
+curl -fsSL https://github.com/raywcm/taskdock/releases/latest/download/install.sh | sh
 ```
 
 The installer detects Linux/macOS and amd64/arm64, verifies SHA-256, and installs
@@ -13,19 +13,25 @@ tasks stay running. It requires curl, tar, and sha256sum or shasum.
 To inspect the script or choose a version/directory:
 
 ```sh
-curl -fsSLo install.sh https://github.com/raywcm/mtask/releases/latest/download/install.sh
+curl -fsSLo install.sh https://github.com/raywcm/taskdock/releases/latest/download/install.sh
 less install.sh
-sh install.sh --version v0.4.4 --prefix "$HOME/.local"
+sh install.sh --version v0.6.0 --prefix "$HOME/.local"
 # System installation:
 sudo sh install.sh --prefix /usr/local
 ```
 
+## Upgrade from mtask
+
+Install TaskDock and run `tdock`. Existing sessions, settings and history are
+reused in place; running processes are not restarted. New installations store
+data in `~/.local/state/taskdock` (or `$XDG_STATE_HOME/taskdock`).
+
 ## Packages
 
 Download the matching archive, `.deb` or `.rpm` and `checksums.txt` from
-[GitHub Releases](https://github.com/raywcm/mtask/releases). Verify the checksum
+[GitHub Releases](https://github.com/raywcm/taskdock/releases). Verify the checksum
 before installing. Debian/Ubuntu users can install a downloaded package with
-`sudo apt install ./mtask_0.4.4_linux_amd64.deb` (use arm64 on ARM hosts).
+`sudo apt install ./tdock_0.6.0_linux_amd64.deb` (use arm64 on ARM hosts).
 There is no public APT repository yet.
 
 ## Build from source
@@ -34,9 +40,9 @@ Requires Go 1.26+ and make. Runtime needs only the binary.
 
 ```sh
 make build
-./scripts/install.sh --prefix "$HOME/.local" ./bin/mtask
+./scripts/install.sh --prefix "$HOME/.local" ./bin/tdock
 # System installation:
-sudo ./scripts/install.sh --prefix /usr/local ./bin/mtask
+sudo ./scripts/install.sh --prefix /usr/local ./bin/tdock
 ```
 
 The installer uses atomic replacement and leaves existing brokers running.
@@ -64,11 +70,11 @@ temporary token; no personal token is needed.
 For an existing Linux binary:
 
 ```sh
-MTASK_VERSION=0.4.4-dev MTASK_ARCH=amd64 MTASK_BINARY=./bin/mtask-linux-amd64 \
+TDOCK_VERSION=0.6.0-dev TDOCK_ARCH=amd64 TDOCK_BINARY=./bin/tdock-linux-amd64 \
   nfpm package --config packaging/nfpm.yaml --packager deb --target dist/
 ```
 
-Packages install `/usr/bin/mtask` and `/usr/share/doc/mtask`. Upgrade/removal does
+Packages install `/usr/bin/tdock` and `/usr/share/doc/tdock`. Upgrade/removal does
 not stop tasks or install a global service.
 
 ## Local APT index

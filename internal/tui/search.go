@@ -7,7 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/raywcm/mtask/internal/task"
+	"github.com/raywcm/taskdock/internal/task"
 )
 
 func (m *model) openSearch() tea.Cmd {

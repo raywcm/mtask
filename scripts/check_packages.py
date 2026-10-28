@@ -21,7 +21,7 @@ def check_elf(binary,arch):
 def deb(package):
     arch='arm64' if 'arm64' in package.name else 'amd64'
     control=control_fields(package)
-    assert 'Package: mtask' in control and 'Architecture: '+arch in control
+    assert 'Package: tdock' in control and 'Architecture: '+arch in control
     data=package.read_bytes();offset=8;found=False
     while offset+60<=len(data):
         header=data[offset:offset+60];name=header[:16].decode().strip().rstrip('/')
@@ -30,15 +30,15 @@ def deb(package):
         if name.startswith('data.tar'):
             with tarfile.open(fileobj=io.BytesIO(member)) as archive:
                 members={m.name.lstrip('./'):m for m in archive.getmembers()}
-                assert members['usr/bin/mtask'].mode&0o777==0o755
-                assert 'usr/share/doc/mtask/docs/usage.md' in members
-                assert 'usr/share/doc/mtask/docs/development-log.md' not in members
-                assert 'usr/share/doc/mtask/README.zh-CN.md' not in members
-                assert 'usr/share/doc/mtask/LICENSE' in members
-                assert 'usr/share/doc/mtask/THIRD_PARTY_NOTICES.md' in members
-                assert len([n for n in members if n.startswith('usr/share/doc/mtask/licenses/') and members[n].isfile()]) == NOTICE_COUNT
-                assert 'usr/share/doc/mtask/docs/archive/architecture-a0.md' in members
-                check_elf(archive.extractfile(members['usr/bin/mtask']).read(),arch)
+                assert members['usr/bin/tdock'].mode&0o777==0o755
+                assert 'usr/share/doc/tdock/docs/usage.md' in members
+                assert 'usr/share/doc/tdock/docs/development-log.md' not in members
+                assert 'usr/share/doc/tdock/README.zh-CN.md' not in members
+                assert 'usr/share/doc/tdock/LICENSE' in members
+                assert 'usr/share/doc/tdock/THIRD_PARTY_NOTICES.md' in members
+                assert len([n for n in members if n.startswith('usr/share/doc/tdock/licenses/') and members[n].isfile()]) == NOTICE_COUNT
+                assert 'usr/share/doc/tdock/docs/archive/architecture-a0.md' in members
+                check_elf(archive.extractfile(members['usr/bin/tdock']).read(),arch)
                 found=True
     assert found
 
@@ -57,7 +57,7 @@ def rpm(package):
         return tags,base+length
     _,end=header(96)
     tags,end=header((end+7)//8*8)
-    assert tags[1000]=='mtask' and tags[1022]==('aarch64' if arch=='arm64' else 'x86_64')
+    assert tags[1000]=='tdock' and tags[1022]==('aarch64' if arch=='arm64' else 'x86_64')
     assert tags[1125]=='gzip'
     payload=gzip.decompress(data[end:]);offset=0;found=False;names=set()
     while offset+110<=len(payload):
@@ -67,16 +67,16 @@ def rpm(package):
         name=payload[offset+110:offset+110+namesize-1].decode()
         if fields[1] & 0o170000 == 0o100000:names.add(name.lstrip('./'))
         start=(offset+110+namesize+3)//4*4
-        if name.lstrip('./')=='usr/bin/mtask':
+        if name.lstrip('./')=='usr/bin/tdock':
             assert fields[1]&0o777==0o755
             check_elf(payload[start:start+size],arch);found=True
         offset=(start+size+3)//4*4
         if name=='TRAILER!!!':break
     assert found
-    assert {'usr/share/doc/mtask/LICENSE','usr/share/doc/mtask/THIRD_PARTY_NOTICES.md'} <= names
-    assert 'usr/share/doc/mtask/docs/development-log.md' not in names
-    assert 'usr/share/doc/mtask/README.zh-CN.md' not in names
-    assert len([n for n in names if n.startswith('usr/share/doc/mtask/licenses/')]) == NOTICE_COUNT
+    assert {'usr/share/doc/tdock/LICENSE','usr/share/doc/tdock/THIRD_PARTY_NOTICES.md'} <= names
+    assert 'usr/share/doc/tdock/docs/development-log.md' not in names
+    assert 'usr/share/doc/tdock/README.zh-CN.md' not in names
+    assert len([n for n in names if n.startswith('usr/share/doc/tdock/licenses/')]) == NOTICE_COUNT
 
 
 def main():
@@ -90,7 +90,7 @@ def main():
     for path in sorted(root.glob('*.tar.gz')):
         with tarfile.open(path) as archive:
             names={m.name for m in archive.getmembers()}
-            assert {'mtask','install.sh','README.md','LICENSE','THIRD_PARTY_NOTICES.md'} <= names
+            assert {'tdock','install.sh','README.md','LICENSE','THIRD_PARTY_NOTICES.md'} <= names
             assert len([m for m in archive.getmembers() if m.name.startswith('licenses/') and m.isfile()]) == NOTICE_COUNT
             assert 'docs/archive/architecture-a0.md' in names
             assert 'docs/development-log.md' not in names

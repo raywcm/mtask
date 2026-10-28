@@ -2,7 +2,7 @@
 # Download and verify an official release, then replace the binary atomically.
 set -eu
 
-repo=https://github.com/raywcm/mtask
+repo=https://github.com/raywcm/taskdock
 prefix=${HOME:?HOME is not set}/.local
 version=latest
 
@@ -10,14 +10,14 @@ usage() {
   cat <<'EOF'
 Usage: install.sh [--version VERSION] [--prefix DIR]
 
-Install the latest mtask release to ~/.local/bin.
-  --version VERSION  Install a specific release, for example v0.4.4
+Install the latest tdock release to ~/.local/bin.
+  --version VERSION  Install a specific release, for example v0.6.0
   --prefix DIR       Install to DIR/bin without changing shell configuration
   -h, --help         Show this help
 EOF
 }
 
-fail() { printf 'mtask: %s\n' "$*" >&2; exit 1; }
+fail() { printf 'tdock: %s\n' "$*" >&2; exit 1; }
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -67,9 +67,9 @@ case "$version" in v*) ;; *) version=v$version ;; esac
 case "$version" in
   *[!a-zA-Z0-9.+-]*|v|v[!0-9]*) fail 'invalid release version' ;;
 esac
-case "$version" in v[0-9]*.[0-9]*.[0-9]*) ;; *) fail 'use a version such as v0.4.4' ;; esac
+case "$version" in v[0-9]*.[0-9]*.[0-9]*) ;; *) fail 'use a version such as v0.6.0' ;; esac
 
-temp=$(mktemp -d "${TMPDIR:-/tmp}/mtask-install.XXXXXX")
+temp=$(mktemp -d "${TMPDIR:-/tmp}/tdock-install.XXXXXX")
 stage=
 cleanup() {
   [ -z "$stage" ] || rm -f "$stage"
@@ -78,8 +78,8 @@ cleanup() {
 trap cleanup 0
 trap 'exit 1' HUP INT TERM
 
-archive=mtask_${version#v}_${platform}_${arch}.tar.gz
-printf 'Downloading mtask %s for %s/%s...\n' "$version" "$platform" "$arch"
+archive=tdock_${version#v}_${platform}_${arch}.tar.gz
+printf 'Downloading tdock %s for %s/%s...\n' "$version" "$platform" "$arch"
 download --output "$temp/$archive" "$repo/releases/download/$version/$archive" || fail 'archive download failed'
 download --output "$temp/checksums.txt" "$repo/releases/download/$version/checksums.txt" || fail 'checksum download failed'
 expected=$(awk -v name="$archive" '$2 == name { print $1; count++ } END { if (count != 1) exit 1 }' "$temp/checksums.txt") || fail 'archive checksum is missing or duplicated'
@@ -92,20 +92,20 @@ else
 fi
 actual=${actual%% *}
 [ "$actual" = "$expected" ] || fail 'SHA-256 verification failed; existing installation was not changed'
-tar -xzf "$temp/$archive" -C "$temp" mtask || fail 'cannot extract mtask'
-[ -f "$temp/mtask" ] && [ ! -L "$temp/mtask" ] || fail 'invalid binary in archive'
-chmod 0755 "$temp/mtask"
-"$temp/mtask" --version || fail 'the downloaded binary cannot run on this system'
+tar -xzf "$temp/$archive" -C "$temp" tdock || fail 'cannot extract tdock'
+[ -f "$temp/tdock" ] && [ ! -L "$temp/tdock" ] || fail 'invalid binary in archive'
+chmod 0755 "$temp/tdock"
+"$temp/tdock" --version || fail 'the downloaded binary cannot run on this system'
 
 case "$prefix" in /*) ;; *) prefix=$PWD/$prefix ;; esac
 mkdir -p "$prefix/bin"
-stage=$(mktemp "$prefix/bin/.mtask.XXXXXX")
-cp "$temp/mtask" "$stage"
+stage=$(mktemp "$prefix/bin/.tdock.XXXXXX")
+cp "$temp/tdock" "$stage"
 chmod 0755 "$stage"
-mv -f "$stage" "$prefix/bin/mtask"
+mv -f "$stage" "$prefix/bin/tdock"
 stage=
-printf 'Installed %s/bin/mtask\n' "$prefix"
+printf 'Installed %s/bin/tdock\n' "$prefix"
 case ":${PATH:-}:" in
   *":$prefix/bin:"*) ;;
-  *) printf 'Add %s/bin to PATH, then run mtask.\n' "$prefix" ;;
+  *) printf 'Add %s/bin to PATH, then run tdock.\n' "$prefix" ;;
 esac

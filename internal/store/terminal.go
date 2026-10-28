@@ -2,7 +2,7 @@ package store
 
 import (
 	"errors"
-	"github.com/raywcm/mtask/internal/task"
+	"github.com/raywcm/taskdock/internal/task"
 )
 
 func (s *JSON) LoadTerminalModes(id task.ID) (task.TerminalModes, error) {

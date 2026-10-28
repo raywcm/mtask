@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exercise MTasK's visible tabs, selection, metrics and persistent settings.
+"""Exercise TaskDock's visible tabs, selection, metrics and persistent settings.
 
 Test dependency: scripts/requirements-screen.txt. Every task belongs to temporary state.
 """
@@ -25,8 +25,8 @@ def wait_view(fd,terminal,predicate,timeout=6):
 
 
 def main():
-    binary=pathlib.Path(sys.argv[1] if len(sys.argv)>1 else 'bin/mtask').resolve()
-    with tempfile.TemporaryDirectory(prefix='mtask-ui-test-') as root:
+    binary=pathlib.Path(sys.argv[1] if len(sys.argv)>1 else 'bin/tdock').resolve()
+    with tempfile.TemporaryDirectory(prefix='tdock-ui-test-') as root:
         h=Harness(root,binary)
         try:
             h.cli('settings','set','language','en')
@@ -36,10 +36,10 @@ def main():
             pid,fd=h.spawn_tty();terminal=Terminal()
             text=wait_view(fd,terminal,lambda text:'live-work' in text and 'Memory' in text)
             version=h.cli('--version').stdout.decode().strip().split()[-1]
-            assert 'MTasK' in text and version not in text
+            assert 'TaskDock' in text and version not in text
             assert live[:8] in text and live not in text
             assert 'completed-work' not in text
-            shortcut_rows=[row for row in terminal.display if all(key in row for key in ('MTasK','Enter','F12/Ctrl+B,d','?','q'))]
+            shortcut_rows=[row for row in terminal.display if all(key in row for key in ('TaskDock','Enter','F12/Ctrl+B,d','?','q'))]
             assert len(shortcut_rows)==1 and shortcut_rows[0]==terminal.display[0], 'shortcuts must share the brand row'
             selected=next(i for i,row in enumerate(terminal.display) if 'live-work' in row)
             row=terminal.display[selected].strip()
@@ -143,7 +143,7 @@ def main():
                     os.write(fd,b'y');h.finished(live)
                     wait_view(fd,terminal,lambda text:'live-work' not in text)
                 os.write(fd,b'q');drain(fd);assert h.join(pid)==0
-            print('PASS MTasK/version, single-line inverse frame, short ID, sampled child CPU/RSS, tab filtering, F1/? help, F5 refresh, three-tab navigation/settings editor, one-line shortcuts, five languages, no metrics explanation, saved retention policy and default tab')
+            print('PASS TaskDock/version, single-line inverse frame, short ID, sampled child CPU/RSS, tab filtering, F1/? help, F5 refresh, three-tab navigation/settings editor, one-line shortcuts, five languages, no metrics explanation, saved retention policy and default tab')
             print('PASS five-language stop confirmation with name/ID, Enter cancellation protects process, explicit y stops')
         finally:h.cleanup()
 

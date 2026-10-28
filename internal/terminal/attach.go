@@ -12,12 +12,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/raywcm/mtask/internal/config"
-	"github.com/raywcm/mtask/internal/i18n"
-	"github.com/raywcm/mtask/internal/ipc"
-	"github.com/raywcm/mtask/internal/protocol"
-	"github.com/raywcm/mtask/internal/store"
-	"github.com/raywcm/mtask/internal/task"
+	"github.com/raywcm/taskdock/internal/config"
+	"github.com/raywcm/taskdock/internal/i18n"
+	"github.com/raywcm/taskdock/internal/ipc"
+	"github.com/raywcm/taskdock/internal/protocol"
+	"github.com/raywcm/taskdock/internal/store"
+	"github.com/raywcm/taskdock/internal/task"
 	"golang.org/x/sys/unix"
 	"golang.org/x/term"
 )

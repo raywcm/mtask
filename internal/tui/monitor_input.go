@@ -9,8 +9,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	uv "github.com/charmbracelet/ultraviolet"
-	"github.com/raywcm/mtask/internal/monitor"
-	"github.com/raywcm/mtask/internal/terminal"
+	"github.com/raywcm/taskdock/internal/monitor"
+	"github.com/raywcm/taskdock/internal/terminal"
 )
 
 type monitorAction struct {

@@ -4,7 +4,7 @@ PYTHON ?= python3
 .PHONY: build test check integration acceptance notices snapshot clean
 build:
 	@mkdir -p bin
-	@tmp=$$(mktemp ./bin/.mtask-build.XXXXXX); trap 'rm -f "$$tmp"' EXIT; $(GO) build -trimpath -o "$$tmp" ./cmd/mtask && mv -f "$$tmp" bin/mtask
+	@tmp=$$(mktemp ./bin/.tdock-build.XXXXXX); trap 'rm -f "$$tmp"' EXIT; $(GO) build -trimpath -o "$$tmp" ./cmd/tdock && mv -f "$$tmp" bin/tdock
 
 test:
 	$(GO) test -race ./...
@@ -15,10 +15,10 @@ check:
 	$(PYTHON) scripts/third_party_notices.py --check --go $(GO)
 
 integration: build
-	$(PYTHON) scripts/integration.py bin/mtask
+	$(PYTHON) scripts/integration.py bin/tdock
 
 acceptance: build
-	$(PYTHON) scripts/acceptance.py --binary bin/mtask
+	$(PYTHON) scripts/acceptance.py --binary bin/tdock
 
 notices:
 	$(PYTHON) scripts/third_party_notices.py --go $(GO)

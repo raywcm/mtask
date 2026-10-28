@@ -6,7 +6,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/raywcm/mtask/internal/protocol"
+	"github.com/raywcm/taskdock/internal/protocol"
 )
 
 const (

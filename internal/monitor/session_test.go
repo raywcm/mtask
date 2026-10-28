@@ -10,8 +10,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/charmbracelet/x/ansi"
-	"github.com/raywcm/mtask/internal/store"
-	"github.com/raywcm/mtask/internal/task"
+	"github.com/raywcm/taskdock/internal/store"
+	"github.com/raywcm/taskdock/internal/task"
 )
 
 func TestOffscreenEmulationStylesCJKAndAlternateScreen(t *testing.T) {

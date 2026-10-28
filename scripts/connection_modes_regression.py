@@ -11,7 +11,7 @@ import sys
 import tempfile
 import time
 
-from integration import Harness, drain, frame, receive, until
+from integration import Harness, drain, frame, receive, until, wait_output
 from screen_regression import Terminal, CURSES_LIKE
 from ui_regression import wait_view
 
@@ -44,7 +44,7 @@ def connect(h,ref,mode,rows=24,cols=80):
     import hashlib
     digest=hashlib.sha256(str(h.state.resolve()).encode()).hexdigest()[:12]
     conn=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM);conn.settimeout(6)
-    conn.connect(f'/tmp/mtask-{os.getuid()}/{digest}/{task}.sock')
+    conn.connect(f'/tmp/tdock-{os.getuid()}/{digest}/{task}.sock')
     frame(conn,1,{'task_id':task,'instance_id':record['runtime']['instance_id'],'mode':'attach','size':{'rows':rows,'cols':cols},'attach_mode':mode,'capabilities':[CAP]})
     kind,payload=receive(conn)
     assert kind==2,(kind,payload)
@@ -144,14 +144,16 @@ def test_cli_and_tui(h):
         os.write(fd,b'\r')
         wait_view(fd,term,lambda text:'Connection modes' in text and 'already has a controller' in text)
         os.write(fd,b'\r');wait_view(fd,term,lambda text:'Read only' in text and 'Connection modes' not in text)
-        os.write(fd,b'\x02d');wait_view(fd,term,lambda text:term.alternate and 'mode-ui' in text and 'Memory' in text)
+        os.write(fd,b'\x02d');term.feed(wait_output(fd,b'TaskDock'))
+        wait_view(fd,term,lambda text:term.alternate and 'mode-ui' in text and 'Memory' in text)
         # Choose shared control and send input from both ends.
         os.write(fd,b'c');wait_view(fd,term,lambda text:'Connection modes' in text)
         os.write(fd,b'\x1b[B\r');wait_view(fd,term,lambda text:'Shared control' in text and 'Connection modes' not in text)
         os.write(fd,b'from-ui-shared\n');output(owner,b'ECHO:from-ui-shared\n')
         frame(owner,3,b'from-other-controller\n')
         wait_view(fd,term,lambda text:'ECHO:from-other-controller' in text)
-        os.write(fd,b'\x02d');wait_view(fd,term,lambda text:term.alternate and 'Memory' in text)
+        os.write(fd,b'\x02d');term.feed(wait_output(fd,b'TaskDock'))
+        wait_view(fd,term,lambda text:term.alternate and 'mode-ui' in text and 'Memory' in text)
         # Takeover requires a second, explicit confirmation.
         os.write(fd,b'c');wait_view(fd,term,lambda text:'Connection modes' in text)
         os.write(fd,b'\x1b[A\r');wait_view(fd,term,lambda text:'y confirm' in text)
@@ -214,7 +216,7 @@ def test_languages(h):
 
 
 def test_old_broker(binary,old_binary):
-    with tempfile.TemporaryDirectory(prefix='mtask-modes-old-') as root:
+    with tempfile.TemporaryDirectory(prefix='tdock-modes-old-') as root:
         h=Harness(root,old_binary)
         try:
             h.cli('settings','set','language','en');h.cli('settings','set','history-retention','off')
@@ -230,12 +232,12 @@ def test_old_broker(binary,old_binary):
             after=h.show(ref)['runtime']
             for key in ['instance_id','broker_pid','child_pid']:assert before[key]==after[key]
             pid,fd=h.spawn_tty('attach',ref);term=Terminal()
-            wait_view(fd,term,lambda text:'MTasK' in text)
+            wait_view(fd,term,lambda text:'TaskDock' in text)
             os.write(fd,b'old-broker-still-usable\n');wait_view(fd,term,lambda text:'ECHO:old-broker-still-usable' in text)
             os.write(fd,b'\x02d');drain(fd);assert h.join(pid)==0
             print('PASS old broker rejects all new modes without acquiring control; ordinary attach and original task PIDs preserved',flush=True)
         finally:h.cleanup()
-    with tempfile.TemporaryDirectory(prefix='mtask-modes-legacy-client-') as root:
+    with tempfile.TemporaryDirectory(prefix='tdock-modes-legacy-client-') as root:
         h=Harness(root,binary)
         connections=[]
         try:
@@ -244,7 +246,7 @@ def test_old_broker(binary,old_binary):
             h.binary=old_binary
             pid,fd=h.spawn_tty('attach',ref);term=Terminal()
             h.binary=binary
-            wait_view(fd,term,lambda text:'MTasK' in text)
+            wait_view(fd,term,lambda text:'TaskDock' in text)
             shared,_=connect(h,ref,'shared');connections.append(shared)
             frame(shared,3,b'new-writer-old-frontend\n')
             wait_view(fd,term,lambda text:'ECHO:new-writer-old-frontend' in text)
@@ -259,8 +261,8 @@ def test_old_broker(binary,old_binary):
 
 
 def main():
-    binary=pathlib.Path(sys.argv[1] if len(sys.argv)>1 else 'bin/mtask').resolve()
-    with tempfile.TemporaryDirectory(prefix='mtask-modes-') as root:
+    binary=pathlib.Path(sys.argv[1] if len(sys.argv)>1 else 'bin/tdock').resolve()
+    with tempfile.TemporaryDirectory(prefix='tdock-modes-') as root:
         h=Harness(root,binary)
         try:
             h.cli('settings','set','language','en')

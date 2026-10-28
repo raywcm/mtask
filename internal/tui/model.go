@@ -11,12 +11,12 @@ import (
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
-	"github.com/raywcm/mtask/internal/config"
-	"github.com/raywcm/mtask/internal/i18n"
-	"github.com/raywcm/mtask/internal/monitor"
-	"github.com/raywcm/mtask/internal/protocol"
-	"github.com/raywcm/mtask/internal/service"
-	"github.com/raywcm/mtask/internal/task"
+	"github.com/raywcm/taskdock/internal/config"
+	"github.com/raywcm/taskdock/internal/i18n"
+	"github.com/raywcm/taskdock/internal/monitor"
+	"github.com/raywcm/taskdock/internal/protocol"
+	"github.com/raywcm/taskdock/internal/service"
+	"github.com/raywcm/taskdock/internal/task"
 )
 
 const (

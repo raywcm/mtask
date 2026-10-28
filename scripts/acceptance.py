@@ -15,7 +15,8 @@ ROOT = SCRIPTS.parent
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--binary', default='bin/mtask')
+    parser.add_argument('--binary', default='bin/tdock')
+    parser.add_argument('--legacy-binary', help='optional mtask v0.5.2 binary for upgrade checks')
     parser.add_argument('--report', default='dist/acceptance/local.json')
     args = parser.parse_args()
     binary = pathlib.Path(args.binary).resolve()
@@ -35,6 +36,8 @@ def main():
         ('detach-keys', ['detach_keys_regression.py']),
         ('bounded-soak', ['stress.py', '--binary', str(binary), '--tasks', '16', '--seconds', '5']),
     ]
+    if args.legacy_binary:
+        tests.append(('rename-upgrade', ['rename_regression.py', str(binary), str(pathlib.Path(args.legacy_binary).resolve())]))
     report = {
         'started_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
         'os': platform.system(), 'release': platform.release(), 'arch': platform.machine(),

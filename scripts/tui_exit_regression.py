@@ -15,8 +15,8 @@ from ui_regression import wait_view
 
 
 def main():
-    binary = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else 'bin/mtask').resolve()
-    with tempfile.TemporaryDirectory(prefix='mtask-tui-exit-') as root:
+    binary = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else 'bin/tdock').resolve()
+    with tempfile.TemporaryDirectory(prefix='tdock-tui-exit-') as root:
         h = Harness(root, binary)
         try:
             h.cli('settings', 'set', 'language', 'en')

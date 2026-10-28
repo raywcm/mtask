@@ -10,9 +10,9 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/raywcm/mtask/internal/ipc"
-	"github.com/raywcm/mtask/internal/monitor"
-	"github.com/raywcm/mtask/internal/task"
+	"github.com/raywcm/taskdock/internal/ipc"
+	"github.com/raywcm/taskdock/internal/monitor"
+	"github.com/raywcm/taskdock/internal/task"
 )
 
 type monitorTick struct{ generation uint64 }

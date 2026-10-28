@@ -9,21 +9,21 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/raywcm/mtask/internal/config"
-	"github.com/raywcm/mtask/internal/daemon"
-	historycleanup "github.com/raywcm/mtask/internal/history"
-	"github.com/raywcm/mtask/internal/i18n"
-	"github.com/raywcm/mtask/internal/ipc"
-	"github.com/raywcm/mtask/internal/protocol"
-	"github.com/raywcm/mtask/internal/service"
-	"github.com/raywcm/mtask/internal/task"
-	"github.com/raywcm/mtask/internal/terminal"
-	"github.com/raywcm/mtask/internal/tui"
+	"github.com/raywcm/taskdock/internal/config"
+	"github.com/raywcm/taskdock/internal/daemon"
+	historycleanup "github.com/raywcm/taskdock/internal/history"
+	"github.com/raywcm/taskdock/internal/i18n"
+	"github.com/raywcm/taskdock/internal/ipc"
+	"github.com/raywcm/taskdock/internal/protocol"
+	"github.com/raywcm/taskdock/internal/service"
+	"github.com/raywcm/taskdock/internal/task"
+	"github.com/raywcm/taskdock/internal/terminal"
+	"github.com/raywcm/taskdock/internal/tui"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 )
 
-var Version = "0.5.2-dev"
+var Version = "0.6.0-dev"
 
 type ExitError struct{ Code int }
 
@@ -49,15 +49,15 @@ func NewRoot() *cobra.Command {
 		return manager, nil
 	}
 	var root *cobra.Command
-	root = &cobra.Command{Use: "mtask", Short: "Independent terminal task manager", Version: Version, Args: cobra.NoArgs, SilenceUsage: true, SilenceErrors: true,
+	root = &cobra.Command{Use: "tdock", Short: "Independent terminal task manager", Version: Version, Args: cobra.NoArgs, SilenceUsage: true, SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			input, ok := cmd.InOrStdin().(*os.File)
 			if !ok || !term.IsTerminal(int(input.Fd())) {
-				return errors.New("TUI requires a terminal; use mtask ls --json")
+				return errors.New("TUI requires a terminal; use tdock ls --json")
 			}
 			output, ok := cmd.OutOrStdout().(*os.File)
 			if !ok || !term.IsTerminal(int(output.Fd())) {
-				return errors.New("TUI requires a terminal; use mtask ls --json")
+				return errors.New("TUI requires a terminal; use tdock ls --json")
 			}
 			manager, err := open()
 			if err != nil {
@@ -123,9 +123,9 @@ func NewRoot() *cobra.Command {
 	root.SetIn(os.Stdin)
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
-	root.SetVersionTemplate("MTasK v{{.Version}}\n")
+	root.SetVersionTemplate("TaskDock v{{.Version}}\n")
 	root.CompletionOptions.DisableDefaultCmd = true
-	root.PersistentFlags().StringVar(&stateDir, "state-dir", "", "absolute state directory (or MTASK_STATE_DIR)")
+	root.PersistentFlags().StringVar(&stateDir, "state-dir", "", "absolute state directory (or TDOCK_STATE_DIR)")
 	var listJSON, history bool
 	list := &cobra.Command{Use: "list-sessions", Aliases: []string{"ls"}, Short: "List tasks and live broker health", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, args []string) error {
 		m, err := open()
@@ -246,7 +246,7 @@ func NewRoot() *cobra.Command {
 			return errors.New("task never started")
 		}
 		if r.Runtime.State == task.Exited || r.Runtime.State == task.Failed {
-			return errors.New("task has ended; use mtask logs")
+			return errors.New("task has ended; use tdock logs")
 		}
 		input, ok := cmd.InOrStdin().(*os.File)
 		if !ok {
@@ -421,7 +421,7 @@ func NewRoot() *cobra.Command {
 			return json.NewEncoder(cmd.OutOrStdout()).Encode(settings)
 		}
 		l := i18n.New(settings.Language)
-		_, err = fmt.Fprintf(cmd.OutOrStdout(), "MTasK · %s\n%s: %s (%s)\n%s: %s\n%s: %ds\n%s: %t\n%s: %s\n", l.Text("settings"), l.Text("language"), settings.Language, l.Language, l.Text("theme"), settings.Theme, l.Text("interval"), settings.RefreshSeconds, l.Text("resources"), settings.ShowResources, l.Text("default_tab"), settings.DefaultTab)
+		_, err = fmt.Fprintf(cmd.OutOrStdout(), "TaskDock · %s\n%s: %s (%s)\n%s: %s\n%s: %ds\n%s: %t\n%s: %s\n", l.Text("settings"), l.Text("language"), settings.Language, l.Language, l.Text("theme"), settings.Theme, l.Text("interval"), settings.RefreshSeconds, l.Text("resources"), settings.ShowResources, l.Text("default_tab"), settings.DefaultTab)
 		if err != nil {
 			return err
 		}

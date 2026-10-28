@@ -4,8 +4,8 @@ package metrics
 
 import (
 	"context"
+	"github.com/raywcm/taskdock/internal/task"
 	"math"
-	"github.com/raywcm/mtask/internal/task"
 	"sync"
 	"time"
 )

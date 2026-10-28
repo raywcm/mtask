@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/raywcm/mtask/internal/task"
+	"github.com/raywcm/taskdock/internal/task"
 )
 
 func fixture(t *testing.T) (*JSON, task.Spec) {

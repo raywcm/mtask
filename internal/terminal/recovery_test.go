@@ -3,8 +3,8 @@ package terminal
 import (
 	"context"
 	"encoding/json"
-	"github.com/raywcm/mtask/internal/protocol"
-	"github.com/raywcm/mtask/internal/task"
+	"github.com/raywcm/taskdock/internal/protocol"
+	"github.com/raywcm/taskdock/internal/task"
 	"reflect"
 	"strings"
 	"testing"

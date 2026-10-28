@@ -2,7 +2,7 @@ package store
 
 import (
 	"context"
-	"github.com/raywcm/mtask/internal/config"
+	"github.com/raywcm/taskdock/internal/config"
 	"os"
 	"path/filepath"
 	"testing"

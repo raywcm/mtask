@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/raywcm/mtask/internal/task"
+	"github.com/raywcm/taskdock/internal/task"
 )
 
 // Process is the OS boundary. Only the supervisor calls Wait, exactly once.

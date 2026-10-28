@@ -9,10 +9,10 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/raywcm/mtask/internal/config"
-	"github.com/raywcm/mtask/internal/monitor"
-	"github.com/raywcm/mtask/internal/service"
-	"github.com/raywcm/mtask/internal/task"
+	"github.com/raywcm/taskdock/internal/config"
+	"github.com/raywcm/taskdock/internal/monitor"
+	"github.com/raywcm/taskdock/internal/service"
+	"github.com/raywcm/taskdock/internal/task"
 )
 
 type fakeBackend struct {
@@ -159,7 +159,7 @@ func TestSelectedSingleLineAndColumnsFitCJKViewport(t *testing.T) {
 	if !strings.Contains(card, "\x1b[1;7m") && !strings.Contains(card, "\x1b[7m") {
 		t.Fatalf("selection not inverted: %q", card)
 	}
-	if view := ansi.Strip(m.View().Content); !strings.Contains(view, "MTasK") || strings.Contains(view, "v0.2.0-test") {
+	if view := ansi.Strip(m.View().Content); !strings.Contains(view, "TaskDock") || strings.Contains(view, "v0.2.0-test") {
 		t.Fatal("main header should show the brand and shortcuts without the version")
 	}
 }

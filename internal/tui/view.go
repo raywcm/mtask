@@ -11,9 +11,9 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/raywcm/mtask/internal/config"
-	"github.com/raywcm/mtask/internal/ipc"
-	"github.com/raywcm/mtask/internal/task"
+	"github.com/raywcm/taskdock/internal/config"
+	"github.com/raywcm/taskdock/internal/ipc"
+	"github.com/raywcm/taskdock/internal/task"
 )
 
 type palette struct{ accent, muted lipgloss.Style }
@@ -38,11 +38,12 @@ func (m model) palette() palette {
 }
 func (m model) header(width int) string {
 	p := m.palette()
-	brand := p.accent.Bold(true).Render("MTasK")
-	if width <= 7 || m.tab == tabSettings || m.mode != "" || m.monitoring {
+	brand := p.accent.Bold(true).Render("TaskDock")
+	brandWidth := ansi.StringWidth(brand) + 2
+	if width <= brandWidth || m.tab == tabSettings || m.mode != "" || m.monitoring {
 		return ansi.Truncate(brand, width, "…")
 	}
-	return brand + "  " + m.helpLine(width-7)
+	return brand + "  " + m.helpLine(width-brandWidth)
 }
 func (m model) tabs(width int) string {
 	p := m.palette()

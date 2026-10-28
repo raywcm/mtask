@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
-	"github.com/raywcm/mtask/internal/monitor"
-	"github.com/raywcm/mtask/internal/task"
+	"github.com/raywcm/taskdock/internal/monitor"
+	"github.com/raywcm/taskdock/internal/task"
 )
 
 func (m *Manager) Monitor(ctx context.Context, id task.ID, size task.Size) (*monitor.Session, error) {

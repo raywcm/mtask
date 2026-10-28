@@ -3,9 +3,9 @@ package cli
 import (
 	"strings"
 
-	"github.com/raywcm/mtask/internal/config"
-	"github.com/raywcm/mtask/internal/i18n"
-	"github.com/raywcm/mtask/internal/store"
+	"github.com/raywcm/taskdock/internal/config"
+	"github.com/raywcm/taskdock/internal/i18n"
+	"github.com/raywcm/taskdock/internal/store"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -47,7 +47,7 @@ func configureLocalization(root *cobra.Command, stateDir *string) {
 			}
 		}
 		walk(root)
-		root.Short = "MTasK · " + locale.CLI("Independent terminal task manager")
+		root.Short = "TaskDock · " + locale.CLI("Independent terminal task manager")
 		usage := englishUsage
 		usage = strings.NewReplacer("Usage:", locale.Text("cli_usage"), "Aliases:", locale.Text("cli_aliases"), "Available Commands:", locale.Text("cli_commands"), "Additional Commands:", locale.Text("cli_additional_commands"), "Global Flags:", locale.Text("cli_global_flags"), "Flags:", locale.Text("cli_flags"), "Use ", locale.Text("cli_use"), " for more information about a command.", locale.Text("cli_more_info")).Replace(usage)
 		root.SetUsageTemplate(usage)

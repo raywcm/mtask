@@ -43,8 +43,8 @@ def direct_startup(binary,cwd):
 def main():
     report=[]
     binary=pathlib.Path(sys.argv[1] if len(sys.argv)>1 else BINARY).resolve()
-    report.append({'mtask':subprocess.check_output([str(binary),'--version'],text=True).strip()})
-    with tempfile.TemporaryDirectory(prefix='mtask-apps-') as root:
+    report.append({'tdock':subprocess.check_output([str(binary),'--version'],text=True).strip()})
+    with tempfile.TemporaryDirectory(prefix='tdock-apps-') as root:
         h=Harness(root,binary)
         active=[]
         try:

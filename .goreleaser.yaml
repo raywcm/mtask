@@ -1,24 +1,24 @@
 version: 2
-project_name: mtask
+project_name: tdock
 builds:
-  - id: mtask
-    main: ./cmd/mtask
-    binary: mtask
+  - id: tdock
+    main: ./cmd/tdock
+    binary: tdock
     env: [CGO_ENABLED=0]
     goos: [linux, darwin]
     goarch: [amd64, arm64]
     flags: [-trimpath]
     ldflags:
-      - -s -w -X github.com/raywcm/mtask/internal/cli.Version={{.Version}}
+      - -s -w -X github.com/raywcm/taskdock/internal/cli.Version={{.Version}}
 archives:
   - formats: [tar.gz]
     name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
     files: [README.md, install.sh, LICENSE, THIRD_PARTY_NOTICES.md, 'licenses/**', 'docs/*.md', 'docs/archive/*.md', 'docs/assets/**']
 nfpms:
   - id: linux
-    package_name: mtask
-    ids: [mtask]
-    maintainer: mtask contributors
+    package_name: tdock
+    ids: [tdock]
+    maintainer: TaskDock contributors
     license: MIT
     description: Independent terminal task manager with persistent PTY brokers
     formats: [deb, rpm]
@@ -27,26 +27,26 @@ nfpms:
     priority: optional
     contents:
       - src: README.md
-        dst: /usr/share/doc/mtask/README.md
+        dst: /usr/share/doc/tdock/README.md
       - src: LICENSE
-        dst: /usr/share/doc/mtask/LICENSE
+        dst: /usr/share/doc/tdock/LICENSE
       - src: THIRD_PARTY_NOTICES.md
-        dst: /usr/share/doc/mtask/THIRD_PARTY_NOTICES.md
+        dst: /usr/share/doc/tdock/THIRD_PARTY_NOTICES.md
       - src: licenses
-        dst: /usr/share/doc/mtask/licenses
+        dst: /usr/share/doc/tdock/licenses
         type: tree
       - src: docs
-        dst: /usr/share/doc/mtask/docs
+        dst: /usr/share/doc/tdock/docs
         type: tree
 checksum:
   name_template: checksums.txt
 snapshot:
-  version_template: '0.5.2-dev'
+  version_template: '0.6.0-dev'
 changelog:
   disable: true
 release:
   github:
     owner: raywcm
-    name: mtask
+    name: taskdock
   extra_files:
     - glob: install.sh

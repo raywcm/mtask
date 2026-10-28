@@ -12,8 +12,8 @@ import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 INSTALLER = ROOT / 'install.sh'
-VERSION = '0.4.4'
-BINARY = b'#!/bin/sh\nprintf "MTasK v0.4.4\\n"\n'
+VERSION = '0.6.0'
+BINARY = b'#!/bin/sh\nprintf "TaskDock v0.6.0\\n"\n'
 
 
 def fixture(root, system, machine, hash_command='sha256sum', failure=''):
@@ -28,9 +28,9 @@ def fixture(root, system, machine, hash_command='sha256sum', failure=''):
     (tools / 'uname').chmod(0o755)
     platform = {'Linux': 'linux', 'Darwin': 'darwin'}.get(system, 'other')
     arch = {'x86_64': 'amd64', 'aarch64': 'arm64', 'arm64': 'arm64'}.get(machine, 'other')
-    archive = root / f'mtask_{VERSION}_{platform}_{arch}.tar.gz'
+    archive = root / f'tdock_{VERSION}_{platform}_{arch}.tar.gz'
     with tarfile.open(archive, 'w:gz') as bundle:
-        member = tarfile.TarInfo('mtask')
+        member = tarfile.TarInfo('tdock')
         member.mode = 0o755
         member.size = len(BINARY)
         bundle.addfile(member, io.BytesIO(BINARY))
@@ -48,7 +48,7 @@ assert args[args.index('--proto-redir')+1]=='=https'
 root=pathlib.Path(os.environ['FIXTURE'])
 with (root/'requests').open('a') as log:log.write(url+'\\n')
 if url.endswith('/releases/latest'):
-    print('https://github.com/raywcm/mtask/releases/tag/v0.4.4',end='')
+    print('https://github.com/raywcm/taskdock/releases/tag/v0.6.0',end='')
 else:
     source=root/url.rsplit('/',1)[1]
     if os.environ['FAILURE']=='download':sys.exit(22)
@@ -57,7 +57,7 @@ else:
     mock.chmod(0o755)
     prefix = root / 'prefix with spaces'
     (prefix / 'bin').mkdir(parents=True)
-    installed = prefix / 'bin/mtask'
+    installed = prefix / 'bin/tdock'
     installed.write_bytes(b'previous-installation')
     temporary = root / 'tmp'
     temporary.mkdir()
@@ -70,15 +70,15 @@ def main():
         for hash_command in ['sha256sum', 'shasum']:
             if not shutil.which(hash_command):
                 continue
-            with tempfile.TemporaryDirectory(prefix='mtask-installer-') as directory:
+            with tempfile.TemporaryDirectory(prefix='tdock-installer-') as directory:
                 root = pathlib.Path(directory)
                 prefix, installed, temporary, env = fixture(root, system, machine, hash_command)
                 result = subprocess.run(['/bin/sh', str(INSTALLER), '--prefix', str(prefix)], env=env, capture_output=True)
                 assert result.returncode == 0, result.stderr
                 assert installed.read_bytes() == BINARY and installed.stat().st_mode & 0o777 == 0o755
-                assert not list(temporary.iterdir()) and not list((prefix/'bin').glob('.mtask.*'))
+                assert not list(temporary.iterdir()) and not list((prefix/'bin').glob('.tdock.*'))
                 requests = (root/'requests').read_text()
-                assert '/releases/latest' in requests and '/releases/download/v0.4.4/' in requests
+                assert '/releases/latest' in requests and '/releases/download/v0.6.0/' in requests
                 # A pinned version skips latest-release discovery and can upgrade in place.
                 (root/'requests').unlink()
                 result = subprocess.run(['/bin/sh', str(INSTALLER), '--version', VERSION, '--prefix', str(prefix)], env=env, capture_output=True)
@@ -86,16 +86,16 @@ def main():
                 assert '/releases/latest' not in (root/'requests').read_text()
 
     for failure in ['checksum', 'download']:
-        with tempfile.TemporaryDirectory(prefix='mtask-installer-fail-') as directory:
+        with tempfile.TemporaryDirectory(prefix='tdock-installer-fail-') as directory:
             root = pathlib.Path(directory)
             hash_command = 'sha256sum' if shutil.which('sha256sum') else 'shasum'
             prefix, installed, temporary, env = fixture(root, 'Linux', 'x86_64', hash_command, failure)
             result = subprocess.run(['/bin/sh', str(INSTALLER), '--version', VERSION, '--prefix', str(prefix)], env=env, capture_output=True)
             assert result.returncode != 0
             assert installed.read_bytes() == b'previous-installation'
-            assert not list(temporary.iterdir()) and not list((prefix/'bin').glob('.mtask.*'))
+            assert not list(temporary.iterdir()) and not list((prefix/'bin').glob('.tdock.*'))
 
-    with tempfile.TemporaryDirectory(prefix='mtask-installer-platform-') as directory:
+    with tempfile.TemporaryDirectory(prefix='tdock-installer-platform-') as directory:
         root = pathlib.Path(directory)
         hash_command = 'sha256sum' if shutil.which('sha256sum') else 'shasum'
         prefix, installed, _, env = fixture(root, 'FreeBSD', 'x86_64', hash_command)

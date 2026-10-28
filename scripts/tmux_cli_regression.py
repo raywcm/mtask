@@ -5,8 +5,8 @@ from integration import Harness,until,wait_output
 from connection_modes_regression import FIXTURE,connect,frame,output
 
 def main():
- binary=pathlib.Path(sys.argv[1] if len(sys.argv)>1 else 'bin/mtask').resolve()
- with tempfile.TemporaryDirectory(prefix='mtask-tmux-') as root:
+ binary=pathlib.Path(sys.argv[1] if len(sys.argv)>1 else 'bin/tdock').resolve()
+ with tempfile.TemporaryDirectory(prefix='tdock-tmux-') as root:
   h=Harness(root,binary)
   try:
    h.cli('settings','set','language','en');h.cli('settings','set','history-retention','off')

@@ -6,8 +6,8 @@ import (
 	"unicode"
 
 	"github.com/charmbracelet/x/ansi"
-	"github.com/raywcm/mtask/internal/i18n"
-	"github.com/raywcm/mtask/internal/task"
+	"github.com/raywcm/taskdock/internal/i18n"
+	"github.com/raywcm/taskdock/internal/task"
 )
 
 // Save/restore the window title without querying the terminal or consuming
@@ -32,11 +32,11 @@ func newIdentity(spec task.Spec, locale i18n.Locale, size task.Size, noEscape bo
 	if len(id) > 8 {
 		id = id[:8]
 	}
-	title := fmt.Sprintf("MTasK · %s [%s]", name, id)
+	title := fmt.Sprintf("TaskDock · %s [%s]", name, id)
 	width := max(1, int(size.Cols)-1)
 	label := title
 	if ansi.StringWidth(label) > width {
-		prefix, suffix := "MTasK · ", " ["+id+"]"
+		prefix, suffix := "TaskDock · ", " ["+id+"]"
 		nameWidth := max(1, width-ansi.StringWidth(prefix+suffix))
 		label = ansi.Truncate(prefix+ansi.Truncate(name, nameWidth, "…")+suffix, width, "…")
 	}

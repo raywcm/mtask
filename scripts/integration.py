@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Black-box tests against a real mtask binary. Uses only the Python standard library.
+"""Black-box tests against a real tdock binary. Uses only the Python standard library.
 
-Run: python3 scripts/integration.py [bin/mtask]
+Run: python3 scripts/integration.py [bin/tdock]
 All tasks and sockets belong to temporary test state; no user's task is touched.
 """
 import concurrent.futures
@@ -23,7 +23,7 @@ import tempfile
 import termios
 import time
 
-BINARY = pathlib.Path(sys.argv[1] if __name__ == '__main__' and len(sys.argv) > 1 else 'bin/mtask').resolve()
+BINARY = pathlib.Path(sys.argv[1] if __name__ == '__main__' and len(sys.argv) > 1 else 'bin/tdock').resolve()
 ENV = dict(os.environ)
 ENV.pop('XDG_RUNTIME_DIR', None)
 ENV['TERM'] = 'xterm-256color'
@@ -127,7 +127,9 @@ class Harness:
         record = self.show(ref)
         task = record['spec']['id']
         digest = hashlib.sha256(str(self.state.resolve()).encode()).hexdigest()[:12]
-        path = pathlib.Path(f'/tmp/mtask-{os.getuid()}')/digest/(task+'.sock')
+        path = pathlib.Path(f'/tmp/tdock-{os.getuid()}')/digest/(task+'.sock')
+        if not path.exists():
+            path = pathlib.Path(f'/tmp/mtask-{os.getuid()}')/digest/(task+'.sock')
         assert path.stat().st_mode & 0o777 == 0o600
         assert path.parent.stat().st_mode & 0o777 == 0o700
         conn = socket.socket(socket.AF_UNIX)
@@ -228,14 +230,14 @@ def test_attach(h):
     pid, fd = h.spawn_tty('attach', task)
     initial_state = termios.tcgetattr(fd)
     initial = drain(fd)
-    label = ('MTasK · attach ['+task[:8]+']').encode()
+    label = ('TaskDock · attach ['+task[:8]+']').encode()
     assert b'\x1b[22;2t\x1b]2;'+label+b'\x07' in initial, initial
     assert b'\r\n'+label in initial, initial
     os.write(fd, b'first\n')
     assert b'ECHO:first' in drain(fd)
     pid2, fd2 = h.spawn_tty('attach', task)
     busy = wait_output(fd2, b'busy')
-    assert b'busy' in busy and b'\x1b]2;MTasK' not in busy, busy
+    assert b'busy' in busy and b'\x1b]2;TaskDock' not in busy, busy
     assert h.join(pid2) == 1
     os.write(fd, b'\x02d')
     end = drain(fd)
@@ -249,7 +251,7 @@ def test_attach(h):
     h.cli('rename', task, '代码会话')
     pid, fd = h.spawn_tty('attach', task)
     renamed = drain(fd)
-    label = ('MTasK · 代码会话 ['+task[:8]+']').encode()
+    label = ('TaskDock · 代码会话 ['+task[:8]+']').encode()
     assert b'\x1b]2;'+label+b'\x07' in renamed and b'\r\n'+label in renamed, renamed
     os.write(fd, '中文\n'.encode())
     assert 'ECHO:中文'.encode() in drain(fd)
@@ -372,7 +374,7 @@ def test_logs_and_upgrade(h):
     assert followed.count(b'ONE')==1 and followed.count(b'TWO')==1,followed
     # Replacing the binary path must not change any running broker identity.
     install=h.root/'install';install.mkdir()
-    target=install/'mtask';shutil.copy2(BINARY,target)
+    target=install/'tdock';shutil.copy2(BINARY,target)
     original=h.binary;h.binary=target
     task=h.create('upgrade','/bin/sh','-c','read value')
     broker=h.show(task)['runtime']['broker_pid']
@@ -411,11 +413,11 @@ def test_slow_and_malformed_clients(h):
 
 
 def test_tui(h):
-    with tempfile.TemporaryDirectory(prefix='mtask-tui-') as root:
+    with tempfile.TemporaryDirectory(prefix='tdock-tui-') as root:
         ui=Harness(root,h.binary)
         try:
             pid,fd=ui.spawn_tty()
-            wait_output(fd,b'MTasK')
+            wait_output(fd,b'TaskDock')
             os.write(fd,b'n');drain(fd)
             os.write(fd,b'tui-created\r');wait_output(fd,b'tui-created [')
             until(lambda:ui.show('tui-created')['health']=='online')
@@ -467,8 +469,8 @@ def test_bash_and_vim(h):
 
 
 def main():
-    assert BINARY.is_file(), 'build bin/mtask first'
-    with tempfile.TemporaryDirectory(prefix='mtask-integration-') as root:
+    assert BINARY.is_file(), 'build bin/tdock first'
+    with tempfile.TemporaryDirectory(prefix='tdock-integration-') as root:
         harness=Harness(root)
         try:
             for test in (test_lifecycle,test_foreground_startup,test_attach,test_protocol_and_transparency,

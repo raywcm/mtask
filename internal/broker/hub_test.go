@@ -3,7 +3,7 @@ package broker
 import (
 	"bytes"
 	"errors"
-	"github.com/raywcm/mtask/internal/protocol"
+	"github.com/raywcm/taskdock/internal/protocol"
 	"sync"
 	"testing"
 )

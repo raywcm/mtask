@@ -7,7 +7,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/raywcm/mtask/internal/monitor"
+	"github.com/raywcm/taskdock/internal/monitor"
 )
 
 func TestMonitorNavigationNeverReachesApplication(t *testing.T) {

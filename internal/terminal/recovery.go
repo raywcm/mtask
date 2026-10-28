@@ -12,11 +12,11 @@ import (
 	"time"
 
 	"github.com/charmbracelet/x/ansi"
+	"github.com/raywcm/taskdock/internal/ipc"
+	"github.com/raywcm/taskdock/internal/protocol"
+	"github.com/raywcm/taskdock/internal/store"
+	"github.com/raywcm/taskdock/internal/task"
 	"golang.org/x/sys/unix"
-	"github.com/raywcm/mtask/internal/ipc"
-	"github.com/raywcm/mtask/internal/protocol"
-	"github.com/raywcm/mtask/internal/store"
-	"github.com/raywcm/mtask/internal/task"
 )
 
 var privateModes = map[int]bool{1: true, 6: true, 7: true, 9: true, 25: true, 47: true, 1047: true, 1049: true, 1000: true, 1002: true, 1003: true, 1004: true, 1005: true, 1006: true, 1015: true, 1016: true, 2004: true}

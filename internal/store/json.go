@@ -14,7 +14,7 @@ import (
 	"sort"
 	"syscall"
 
-	"github.com/raywcm/mtask/internal/task"
+	"github.com/raywcm/taskdock/internal/task"
 )
 
 type JSON struct{ root string }

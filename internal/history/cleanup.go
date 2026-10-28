@@ -12,9 +12,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/raywcm/mtask/internal/ipc"
-	"github.com/raywcm/mtask/internal/store"
-	"github.com/raywcm/mtask/internal/task"
+	"github.com/raywcm/taskdock/internal/ipc"
+	"github.com/raywcm/taskdock/internal/store"
+	"github.com/raywcm/taskdock/internal/task"
 )
 
 // Ensure starts at most one effective worker per state directory. A racing

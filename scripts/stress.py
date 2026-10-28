@@ -12,12 +12,12 @@ from integration import Harness
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--binary',default='bin/mtask')
+    parser.add_argument('--binary',default='bin/tdock')
     parser.add_argument('--tasks',type=int,default=32)
     parser.add_argument('--seconds',type=float,default=5)
     args=parser.parse_args()
     if not 1<=args.tasks<=256 or args.seconds<=0:parser.error('tasks must be 1..256 and seconds positive')
-    with tempfile.TemporaryDirectory(prefix='mtask-stress-') as root:
+    with tempfile.TemporaryDirectory(prefix='tdock-stress-') as root:
         h=Harness(root,pathlib.Path(args.binary).resolve())
         try:
             with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:

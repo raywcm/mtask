@@ -13,7 +13,7 @@ make acceptance PYTHON=.venv/bin/python
 The suite stops on failure and saves platform, version and per-test output to
 `dist/acceptance/local.json`. Reports and binaries are excluded from Git.
 For a race-enabled run, build to a fresh path and pass it to
-`scripts/acceptance.py --binary /path/to/mtask`.
+`scripts/acceptance.py --binary /path/to/tdock`.
 
 ## Suites
 
@@ -35,7 +35,7 @@ For a race-enabled run, build to a fresh path and pass it to
 | idle_cpu_regression.py | Idle CPU guard for fullscreen, read-only, list and monitor |
 | installer_test.py | Platform selection, checksums, pinned versions and failed-upgrade protection |
 
-Run a focused suite with `.venv/bin/python scripts/NAME.py ./bin/mtask`.
+Run a focused suite with `.venv/bin/python scripts/NAME.py ./bin/tdock`.
 The default soak uses 16 tasks for five seconds. For a longer run:
 
 ```sh
@@ -44,7 +44,7 @@ The default soak uses 16 tasks for five seconds. For a longer run:
 
 ## Optional checks
 
-`scripts/app_smoke.py ./bin/mtask` starts installed Codex/OpenCode without model
+`scripts/app_smoke.py ./bin/tdock` starts installed Codex/OpenCode without model
 requests and checks PIDs across attach rounds. It skips missing executables;
 screen layout and interactive workflows need separate testing.
 
@@ -56,8 +56,8 @@ To regenerate the shell demo:
 
 ```sh
 .venv/bin/pip install -r scripts/requirements-demo.txt
-.venv/bin/python scripts/record_demo.py --binary ./bin/mtask --font /path/to/mono.ttf
+.venv/bin/python scripts/record_demo.py --binary ./bin/tdock --font /path/to/mono.ttf
 ```
 
 See [compatibility](compatibility.md) for tested platforms and
-[GitHub Actions](https://github.com/raywcm/mtask/actions) for hosted runs.
+[GitHub Actions](https://github.com/raywcm/taskdock/actions) for hosted runs.

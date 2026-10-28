@@ -259,10 +259,10 @@ def test_missing_output(h):
 
 
 def main():
-    frontend=pathlib.Path(sys.argv[1] if len(sys.argv)>1 else 'bin/mtask').resolve()
+    frontend=pathlib.Path(sys.argv[1] if len(sys.argv)>1 else 'bin/tdock').resolve()
     old=pathlib.Path(sys.argv[2]).resolve() if len(sys.argv)>2 else frontend
     for test in [test_monitor,test_dialogs_and_names,test_languages,test_missing_output]:
-        with tempfile.TemporaryDirectory(prefix='mtask-monitor-ui-') as root:
+        with tempfile.TemporaryDirectory(prefix='tdock-monitor-ui-') as root:
             h=Harness(root,old if test==test_monitor else frontend)
             try:
                 h.cli('settings','set','language','en');h.cli('settings','set','history-retention','off')

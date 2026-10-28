@@ -28,8 +28,8 @@ def age(h,task):
 
 
 def main():
-    binary=pathlib.Path(sys.argv[1] if len(sys.argv)>1 else 'bin/mtask').resolve()
-    with tempfile.TemporaryDirectory(prefix='mtask-history-test-') as root:
+    binary=pathlib.Path(sys.argv[1] if len(sys.argv)>1 else 'bin/tdock').resolve()
+    with tempfile.TemporaryDirectory(prefix='tdock-history-test-') as root:
         h=Harness(root,binary)
         try:
             settings=json.loads(h.cli('settings','--json').stdout)

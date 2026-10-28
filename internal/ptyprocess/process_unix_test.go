@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/raywcm/mtask/internal/broker"
-	"github.com/raywcm/mtask/internal/task"
+	"github.com/raywcm/taskdock/internal/broker"
+	"github.com/raywcm/taskdock/internal/task"
 )
 
 // A real PTY test: arguments with shell syntax must remain literal arguments,

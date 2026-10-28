@@ -19,8 +19,8 @@ while True:
 '''
 def received(h,ref):return b''.join(bytes.fromhex(p.decode()) for p in re.findall(rb'INPUT:([0-9a-f]+)',h.cli('logs',ref,'--raw').stdout))
 def main():
- binary=pathlib.Path(sys.argv[1] if len(sys.argv)>1 else 'bin/mtask').resolve()
- with tempfile.TemporaryDirectory(prefix='mtask-monitor-control-') as root:
+ binary=pathlib.Path(sys.argv[1] if len(sys.argv)>1 else 'bin/tdock').resolve()
+ with tempfile.TemporaryDirectory(prefix='tdock-monitor-control-') as root:
   h=Harness(root,binary)
   try:
    h.cli('settings','set','language','en');h.cli('settings','set','history-retention','off')

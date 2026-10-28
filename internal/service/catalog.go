@@ -4,8 +4,8 @@ package service
 import (
 	"context"
 	"fmt"
-	"github.com/raywcm/mtask/internal/i18n"
-	"github.com/raywcm/mtask/internal/task"
+	"github.com/raywcm/taskdock/internal/i18n"
+	"github.com/raywcm/taskdock/internal/task"
 	"strconv"
 	"time"
 )

@@ -1,29 +1,29 @@
-name: mtask
-arch: ${MTASK_ARCH}
+name: tdock
+arch: ${TDOCK_ARCH}
 platform: linux
-version: ${MTASK_VERSION}
-maintainer: mtask contributors
+version: ${TDOCK_VERSION}
+maintainer: TaskDock contributors
 license: MIT
 description: Independent terminal task manager with persistent PTY brokers
 section: utils
 priority: optional
 contents:
-  - src: ${MTASK_BINARY}
+  - src: ${TDOCK_BINARY}
     expand: true
-    dst: /usr/bin/mtask
+    dst: /usr/bin/tdock
     file_info:
       mode: 0755
   - src: README.md
-    dst: /usr/share/doc/mtask/README.md
+    dst: /usr/share/doc/tdock/README.md
   - src: LICENSE
-    dst: /usr/share/doc/mtask/LICENSE
+    dst: /usr/share/doc/tdock/LICENSE
   - src: THIRD_PARTY_NOTICES.md
-    dst: /usr/share/doc/mtask/THIRD_PARTY_NOTICES.md
+    dst: /usr/share/doc/tdock/THIRD_PARTY_NOTICES.md
   - src: licenses
-    dst: /usr/share/doc/mtask/licenses
+    dst: /usr/share/doc/tdock/licenses
     type: tree
   - src: docs
-    dst: /usr/share/doc/mtask/docs
+    dst: /usr/share/doc/tdock/docs
     type: tree
 deb:
   compression: gzip
