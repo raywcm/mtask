@@ -27,7 +27,7 @@ func monitorTickCmd(generation uint64) tea.Cmd {
 }
 func (m model) monitorGeometry() (left, right, height int) {
 	width := max(1, m.width-4)
-	left = max(16, (width-3)/2)
+	left = min(28, max(16, width/4))
 	right = max(1, width-left-3)
 	height = max(1, m.height-7)
 	return

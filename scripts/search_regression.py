@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""New-session half pane, long lists, search routing and Ctrl+Enter in real PTYs."""
+"""New-session monitor, long lists, search routing and Ctrl+Enter in real PTYs."""
 import os
 import pathlib
 import sys
@@ -42,7 +42,7 @@ def main():
             assert b'work-23' not in h.cli('logs', 'added', '--raw').stdout
             os.write(fd, b'\r')
             wait_view(fd, t, lambda s: 'work-23 [' in s and 'Control' in s)
-            until(lambda: latest_size(h, refs[-1]) == (17, 37))
+            until(lambda: latest_size(h, refs[-1]) == (17, 54))
             os.write(fd, b'\rplain-enter\x1b[13;2u')
             expected = b'\rplain-enter\x1b[13;2u'
             until(lambda: received(h, refs[-1]) == expected)
@@ -71,7 +71,7 @@ def main():
             assert h.show(old)['runtime']['state'] == 'exited'
             os.write(fd, b'\x1b')
             wait_view(fd, t, lambda s: 'archived' in s and 'Duration' in s)
-            # Search from the Stop tab can select a running session in the half pane.
+            # Search from the Stop tab can select a running session in the monitor.
             os.write(fd, b'\x06WORK-00\r')
             wait_view(fd, t, lambda s: 'work-00 [' in s and 'Control' in s)
             os.write(fd, b'\x1b[200~\x06\x1b[13;5u\x1b[201~')
@@ -83,7 +83,7 @@ def main():
             for ref, runtime in before.items():
                 assert h.show(ref)['runtime'] == runtime
             assert h.show('added')['runtime']['child_pid'] == created['runtime']['child_pid']
-            print('PASS new selects half-pane control, 25-session scrolling, global name/ID/case search, same-read query, no-match/cancel/history, Ctrl+Enter encodings, literal Enter/Shift+Enter/paste, no resize on search cancel and preserved PIDs', flush=True)
+            print('PASS new selects monitor control, 25-session scrolling, global name/ID/case search, same-read query, no-match/cancel/history, Ctrl+Enter encodings, literal Enter/Shift+Enter/paste, no resize on search cancel and preserved PIDs', flush=True)
         finally:
             h.cleanup()
 

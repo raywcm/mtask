@@ -36,7 +36,7 @@ Add `~/.local/bin` to PATH, or run `./bin/mtask` directly.
 mtask new -s work -- bash
 # Press F12 to detach. The task keeps running.
 mtask
-# Select work and press Enter for half-pane control.
+# Select work and press Enter for monitor control.
 ```
 
 When using SSH, run mtask on the remote host. Reconnect to the same host and
@@ -44,10 +44,10 @@ account after a dropped connection. Tasks do not survive a host reboot.
 
 | In the task list | Action |
 | --- | --- |
-| ↑/↓, Enter | Select and control a task in a half pane; stopped tasks open history |
+| ↑/↓, Enter | Select and control a task in the monitor; stopped tasks open history |
 | Tab / Shift+Tab | Switch Running, Stop and Settings tabs |
 | n, F2, s, Delete | Create, rename, stop or delete; stop/delete require confirmation |
-| v | Open half-pane control |
+| v | Open monitor control |
 | Ctrl+Enter | Open the selected task fullscreen |
 | Ctrl+F | Search all sessions by name, ID, directory or command |
 | c | Choose takeover, read-only or shared control |
@@ -60,9 +60,10 @@ For compatibility, **Ctrl+B, Ctrl+D** (hold Ctrl while pressing B then D) and
 On Mac keyboards, F12 may require Fn. Use `mtask attach --no-escape TASK` to send
 all keys, including F12, to the application.
 
-New sessions created from the TUI open selected in half-pane control. Type
+New sessions created from the TUI open selected in the monitor, with a narrow
+session list and a wide control pane. Type
 directly, including Enter; use **Ctrl+Enter** for fullscreen, **Ctrl+F** to search,
-**Ctrl+B, ↑/↓** to switch tasks, and **F12** to return to the list. List actions
+**↑/↓** to switch tasks, and **Esc/F12** to return to the list. List actions
 apply after returning. Your terminal must send a distinct Ctrl+Enter key.
 
 ## CLI

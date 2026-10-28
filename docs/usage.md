@@ -108,14 +108,16 @@ Unix UID. Older brokers retain ordinary exclusive attach.
 
 ## Monitor and settings
 
-In the TUI, new sessions open selected in half-pane control. Enter or `v` on a
-running session opens the same view. Ordinary input, Enter, arrows, Ctrl+C/D and
-pasted text go directly to the application. **Ctrl+Enter** opens fullscreen; F12
-or Ctrl+B, d returns to the list. Ctrl+B, ↑/↓ switches tasks. List actions such
+In the TUI, new sessions open selected in monitor control. Enter or `v` on a
+running session opens the same view. Ordinary input, Enter, ←/→, Ctrl+C/D and
+pasted text go directly to the application. **Ctrl+Enter** opens fullscreen; Esc, F12
+or Ctrl+B, d returns to the list. ↑/↓ switches tasks. List actions such
 as new, stop and rename are available after returning to the list. Ctrl+Enter
 requires a terminal that sends it distinctly from Enter; the CLI `attach` command
 always opens fullscreen. Shift+Enter has no manager action.
 
+The monitor keeps a narrow session list beside a wide control pane. ↑/↓ and Esc
+are manager keys and never reach the application; bracketed paste stays literal.
 The monitor owns an exclusive connection and uses the pane's size. Leaving
 retains that size. Occupied or unavailable tasks display “Unable to monitor”;
 ↑/↓ selects another task, F5 retries, and F12/Esc returns to the list. Embedded

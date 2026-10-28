@@ -59,6 +59,10 @@ class Terminal:
 
     def feed(self,data):self.stream.feed(data)
 
+    def select_graphic_rendition(self,*attrs,private=False):
+        # CSI ? Ps m queries xterm keyboard mode; it is not an SGR color.
+        if not private:self.current.select_graphic_rendition(*attrs)
+
     def scroll_up(self,count=1,**kwargs):
         screen=self.current
         top,bottom=screen.margins or (0,screen.lines-1)
@@ -75,6 +79,9 @@ class Terminal:
 
 
 def verify_scroll_regions():
+    query=Terminal(10,6)
+    query.feed(b'\x1b[?4m\x1b[31mX\x1b[0m')
+    assert query.display[0].startswith('X') and query.current.buffer[0][0].fg=='red'
     terminal=Terminal(10,6)
     for y in range(6):terminal.feed(('\x1b[%d;1HROW-%d'%(y+1,y+1)).encode())
     terminal.feed(b'\x1b[2;5r\x1b[6;3H\x1b[2T')

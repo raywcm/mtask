@@ -95,7 +95,7 @@ def test_monitor(h,frontend):
         text=wait_view(fd,terminal,lambda text:'STATIC-alpha' in text and 'counter:' in text)
         screen_row=next(row for row in terminal.display if 'STATIC-alpha' in row)
         assert screen_row.index('STATIC-alpha')>screen_row.index('│'),text
-        until(lambda:latest_size(h,alpha)==(17,37)) # 80x24: content 76, list 36, gap 3.
+        until(lambda:latest_size(h,alpha)==(17,54)) # 80x24: content 76, list 19, gap 3.
         os.write(fd,b'\x1b[D\x1b[Chl') # Horizontal keys must not leave/reopen monitor.
         first=re.search(r'counter:(\d+)',text).group(1)
         wait_view(fd,terminal,lambda text:bool((m:=re.search(r'counter:(\d+)',text)) and m.group(1)!=first))
@@ -103,11 +103,11 @@ def test_monitor(h,frontend):
         time.sleep(.15)
         until(lambda:b'INPUT:z' in h.cli('logs',alpha,'--raw').stdout)
         resize(pid,fd,terminal,30,120)
-        wait_view(fd,terminal,lambda text:'SIZE:23,57' in text)
-        assert latest_size(h,alpha)==(23,57)
+        wait_view(fd,terminal,lambda text:'SIZE:23,85' in text)
+        assert latest_size(h,alpha)==(23,85)
         os.write(fd,b'\x02\x1b[B')
         wait_view(fd,terminal,lambda text:'Unable to monitor' in text and 'in use by another terminal' in text)
-        until(lambda:latest_size(h,alpha)==(23,57))
+        until(lambda:latest_size(h,alpha)==(23,85))
         frame(owner,9);kind,_=receive(owner)
         while kind!=10:kind,_=receive(owner)
         assert h.show(beta)['health']=='online'
@@ -116,7 +116,7 @@ def test_monitor(h,frontend):
         wait_view(fd,terminal,lambda text:'STATIC-beta' in text and 'Unable to monitor' not in text)
         os.write(fd,b'\x1b[24~')
         wait_view(fd,terminal,lambda text:'Memory' in text and 'STATIC-beta' not in text)
-        until(lambda:latest_size(h,beta)==(23,57))
+        until(lambda:latest_size(h,beta)==(23,85))
         os.write(fd,b'v')
         wait_view(fd,terminal,lambda text:'STATIC-beta' in text)
         # Ctrl+Enter opens the ordinary terminal after releasing the lease.
@@ -129,14 +129,14 @@ def test_monitor(h,frontend):
         os.write(fd,b'\x1b[24~')
         wait_view(fd,terminal,lambda text:'Memory' in text and 'STATIC-beta' not in text)
         # Returning to monitor sets the pane size and leaves it in place on exit.
-        until(lambda:latest_size(h,beta)==(23,57))
+        until(lambda:latest_size(h,beta)==(23,85))
         offset=len(h.cli('logs',beta,'--raw').stdout)
         for _ in range(3):
             os.write(fd,b'v');wait_view(fd,terminal,lambda text:'STATIC-beta' in text)
             resize(pid,fd,terminal,30,120) # Same window size must be a no-op.
             os.write(fd,b'\x1b[24~');wait_view(fd,terminal,lambda text:'Memory' in text and 'STATIC-beta' not in text)
         updates=re.findall(rb'SIZE:(\d+),(\d+)',h.cli('logs',beta,'--raw').stdout[offset:])
-        assert all(tuple(map(int,size))==(23,57) for size in updates),updates
+        assert all(tuple(map(int,size))==(23,85) for size in updates),updates
         os.write(fd,b'q');drain(fd);assert h.join(pid)==0
         for ref in [alpha,beta]:assert identity(h,ref)==before[ref]
         print('PASS v split monitor/static cells/live refresh, direct keyboard input, pane resize, switch/size retention, occupied-session failure/retry, Ctrl+Enter attach/detach returns to monitor, stable task PIDs',flush=True)

@@ -70,7 +70,10 @@ At attach boundaries, known modes are read from bounded logs and the instance's
 redraw wait of up to two seconds. No full screen snapshot or scrollback is kept.
 
 The monitor uses a separate VT fed from retained logs. It acquires an exclusive
-display connection, forwards keyboard input and uses half of the terminal width.
+display connection and forwards ordinary keyboard input. ↑/↓ and Esc stay in the
+manager for navigation.
+The session list uses a quarter of the width, capped at 28 columns; the control
+pane uses the remaining space.
 Leaving retains that size. Ctrl+F pauses input forwarding for session search;
 Ctrl+Enter leaves the TUI for fullscreen attach.
 Repeated identical sizes are ignored. Device replies are disabled; only rendered

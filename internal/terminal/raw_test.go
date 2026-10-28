@@ -6,6 +6,29 @@ import (
 	"testing"
 )
 
+func TestPasteEndingAfterLiteralEscDoesNotCaptureNextKey(t *testing.T) {
+	paste := "\x1b[200~literal\x1b\x1b[201~"
+	for split := 0; split <= len(paste); split++ {
+		commands := 0
+		d := EscapeDecoder{Command: func(raw []byte, _ uint16) bool {
+			if string(raw) == "\x1b" {
+				commands++
+				return true
+			}
+			return false
+		}}
+		first, handled := d.Feed([]byte(paste[:split]))
+		last, done := d.Feed([]byte(paste[split:]))
+		if handled || done || string(append(first, last...)) != paste || d.pasting || commands != 0 {
+			t.Fatalf("split %d: paste changed or did not end", split)
+		}
+		d.Feed([]byte{0x1b})
+		if output := d.FlushEscape(); len(output) != 0 || commands != 1 {
+			t.Fatal("Esc after paste was forwarded")
+		}
+	}
+}
+
 func TestEmbeddedCommandPreservesSwitchTypeaheadAcrossEverySplit(t *testing.T) {
 	input := []byte("before\x02\x1b[Bafter中文")
 	for split := 0; split <= len(input); split++ {

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/raywcm/mtask/internal/monitor"
 	"github.com/raywcm/mtask/internal/terminal"
 )
@@ -35,15 +36,17 @@ type monitorInput struct {
 	notify                 func(monitorAction)
 	barrier                chan struct{}
 	ctx                    context.Context
+	timerGeneration        uint64
 }
 
 func (r *monitorInput) resetLocked() {
+	r.timerGeneration++
 	if r.timer != nil {
 		r.timer.Stop()
 		r.timer = nil
 	}
 	r.decoder = terminal.EscapeDecoder{PrefixCommand: func(raw []byte) bool {
-		command := ""
+		command := monitorNavigation(raw)
 		switch string(raw) {
 		case "\x1b[A", "p":
 			command = "previous"
@@ -56,7 +59,7 @@ func (r *monitorInput) resetLocked() {
 		r.commands = append(r.commands, command)
 		return true
 	}, Command: func(raw []byte, key uint16) bool {
-		command := ""
+		command := monitorNavigation(raw)
 		if key == 0x06 {
 			command = "search"
 		} else if key == terminal.KeyCtrlEnter {
@@ -170,6 +173,7 @@ func (r *monitorInput) route(raw []byte, fromRead bool) []byte {
 		r.timer.Stop()
 		r.timer = nil
 	}
+	r.timerGeneration++
 	data, detach := r.decoder.Feed(raw)
 	commands := append([]string(nil), r.commands...)
 	r.commands = nil
@@ -191,7 +195,8 @@ func (r *monitorInput) route(raw []byte, fromRead bool) []byte {
 		r.target = nil
 		r.resetLocked()
 	} else if r.decoder.PendingEscape() {
-		r.timer = time.AfterFunc(50*time.Millisecond, func() { r.flush(target) })
+		generation := r.timerGeneration
+		r.timer = time.AfterFunc(50*time.Millisecond, func() { r.flush(target, generation) })
 	}
 	r.mu.Unlock()
 	if len(data) > 0 {
@@ -212,20 +217,53 @@ func (r *monitorInput) route(raw []byte, fromRead bool) []byte {
 	}
 	return remainder
 }
-func (r *monitorInput) flush(target *monitor.Session) {
+func (r *monitorInput) flush(target *monitor.Session, generation uint64) {
 	r.mu.Lock()
-	if r.closed || !r.enabled || r.target != target {
+	if r.closed || !r.enabled || r.target != target || generation != r.timerGeneration {
 		r.mu.Unlock()
 		return
 	}
 	data := r.decoder.FlushEscape()
+	commands := append([]string(nil), r.commands...)
+	r.commands = nil
 	r.timer = nil
+	if len(commands) > 0 {
+		r.enabled = false
+		r.target = nil
+		r.pending = nil
+		r.resetLocked()
+	}
 	r.mu.Unlock()
 	if len(data) > 0 {
 		if err := target.Input(data); err != nil {
 			r.notify(monitorAction{kind: "input-error", session: target, err: err})
 		}
 	}
+	for _, command := range commands {
+		r.notify(monitorAction{kind: command, session: target})
+	}
+}
+
+func monitorNavigation(raw []byte) string {
+	if len(raw) == 0 || raw[0] != 0x1b {
+		return ""
+	}
+	var decoder uv.EventDecoder
+	n, event := decoder.Decode(raw)
+	if n != len(raw) {
+		return ""
+	}
+	if key, ok := event.(uv.KeyPressEvent); ok {
+		switch key.Code {
+		case uv.KeyUp:
+			return "previous"
+		case uv.KeyDown:
+			return "next"
+		case uv.KeyEscape:
+			return "back"
+		}
+	}
+	return ""
 }
 
 // Preserve key events that were decoded just before v enabled the raw route.

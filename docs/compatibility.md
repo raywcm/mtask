@@ -44,8 +44,8 @@ startup check, so its visible startup still needs testing.
 - **Monitoring changes the PTY size.** The preview uses its pane size and retains
   that size when leaving. Full attach applies the full terminal size. Occupied
   or unreachable tasks display “Unable to monitor.” The preview is reconstructed
-  from retained logs and accepts keyboard input immediately. List shortcuts
-  require returning with F12; Ctrl+B, ↑/↓ switches the monitored task. Native
+  from retained logs and accepts keyboard input immediately. ↑/↓ selects the monitored task and Esc/F12 returns to the list;
+  these keys are reserved in the monitor. Native
   mouse behavior and unsupported terminal extensions require fullscreen attach.
 - **Connection roles are scoped to one Unix account.** Read-only limits that
   connection; the same account can open another management client. Shared inputs

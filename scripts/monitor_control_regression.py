@@ -31,15 +31,23 @@ def main():
    os.write(fd,b'v' + b'nscqvh')
    wait_view(fd,t,lambda s:'READY-alpha' in s and 'Control' in s)
    expected=b'nscqvh';until(lambda:received(h,a)==expected)
-   payload=b'\r\x03\x04\x1b[A\x1b[B'+ '中文🙂'.encode()+b'\x1b[200~\x1b[24~\x02d\x02\x1b[B\x1b[201~'
+   payload=b'\r\x03\x04\x1b[C\x1b[D'+ '中文🙂'.encode()+b'\x1b[200~\x1b[24~\x02d\x1b[A\x1b[B\x1b\x1b[201~'
    os.write(fd,payload);expected+=payload;until(lambda:received(h,a)==expected)
-   os.write(fd,b'\x1b');expected+=b'\x1b';until(lambda:received(h,a)==expected)
-   os.write(fd,b'\x02\x1b[Bbeta-input')
+   os.write(fd,b'\x1b');wait_view(fd,t,lambda s:'Memory' in s and 'Control' not in s)
+   assert received(h,a)==expected,'Esc reached application'
+   os.write(fd,b'v');wait_view(fd,t,lambda s:'Control' in s and 'READY-alpha' in s)
+   os.write(fd,b'\x1b[Bbeta-input')
    wait_view(fd,t,lambda s:'READY-beta' in s and 'Control' in s)
    until(lambda:received(h,b)==b'beta-input');assert received(h,a)==expected
-   os.write(fd,b'\x02\x1b[Aalpha-input');wait_view(fd,t,lambda s:'READY-alpha' in s)
+   os.write(fd,b'\x1b[Aalpha-input');wait_view(fd,t,lambda s:'READY-alpha' in s)
    expected+=b'alpha-input';until(lambda:received(h,a)==expected)
-   a_size=latest_size(h,a);assert a_size==(17,37),a_size
+   # SS3 and CSI-u arrow keys are navigation too; literal input follows the selected task.
+   os.write(fd,b'\x1bOBmore-beta');wait_view(fd,t,lambda s:'READY-beta' in s)
+   until(lambda:received(h,b)==b'beta-inputmore-beta')
+   for byte in b'\x1b[57352u':os.write(fd,bytes([byte]));time.sleep(.005)
+   wait_view(fd,t,lambda s:'READY-alpha' in s)
+   assert received(h,a)==expected,'navigation bytes reached application'
+   a_size=latest_size(h,a);assert a_size==(17,54),a_size
    os.write(fd,b'\x1b[13;5u');wait_view(fd,t,lambda s:'alpha [' in s and 'Control' not in s)
    os.write(fd,b'fullscreen');expected+=b'fullscreen';until(lambda:received(h,a)==expected)
    os.write(fd,b'\x1b[24~');wait_view(fd,t,lambda s:'READY-alpha' in s and 'Control' in s)
@@ -54,10 +62,13 @@ def main():
     file=pathlib.Path(root)/'pane.txt';ref=h.create('vim-control',shutil.which('vim'),'-u','NONE','-n',str(file))
     pid,fd=h.spawn_tty();t=Terminal();wait_view(fd,t,lambda s:'vim-control' in s and 'Memory' in s)
     os.write(fd,b'\x1b[B\x1b[Bv');wait_view(fd,t,lambda s:'vim-control' in s and 'Control' in s)
-    os.write(fd,b'iHello '+ '世界'.encode()+b'\x1b:w\r')
+    os.write(fd,b'iHello '+ '世界'.encode())
+    os.write(fd,b'\x1b[13;5u');wait_view(fd,t,lambda s:'Hello 世界' in s and 'Control' not in s)
+    os.write(fd,b'\x1b:w\r')
     until(lambda:file.exists() and file.read_text().strip()=='Hello 世界')
-    os.write(fd,b'\x1b[24~');wait_view(fd,t,lambda s:'Memory' in s)
+    os.write(fd,b'\x1b[24~');wait_view(fd,t,lambda s:'Control' in s)
+    os.write(fd,b'\x1b');wait_view(fd,t,lambda s:'Memory' in s)
     os.write(fd,b'q');assert h.join(pid)==0
-   print('PASS immediate v control/typeahead, literal list keys, Ctrl+C/D, arrows, paste/Unicode/Esc, prefix switch/Ctrl+Enter fullscreen, split F12 and compatible detach; session PIDs preserved; available Vim edit')
+   print('PASS immediate v control/typeahead, literal list keys, Ctrl+C/D, literal paste/Unicode/horizontal arrows, reserved Up/Down/Esc, CSI/SS3/CSI-u/split navigation, session switch/Ctrl+Enter fullscreen, split F12 and compatible detach; session PIDs preserved; available Vim edit')
   finally:h.cleanup()
 if __name__=='__main__':main()

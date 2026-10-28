@@ -52,12 +52,18 @@ func (d *EscapeDecoder) Feed(input []byte) (output []byte, detach bool) {
 		// A control key after a bare Esc is a new key, not a CSI sequence.
 		// This also handles Vim Esc + detach arriving in a single TTY read
 		// after startup/repaint delayed input processing.
-		if len(d.escape) == 1 && b < 0x20 && b != 0x1b {
-			output = append(output, d.flushEscape()...)
+		if len(d.escape) == 1 && b < 0x20 {
+			part, done := d.consume(d.escape, 0)
+			d.escape = nil
+			output = append(output, part...)
+			if done {
+				d.Remaining = append([]byte(nil), input[index:]...)
+				return output, true
+			}
 		}
 		if len(d.escape) > 0 {
 			d.escape = append(d.escape, b)
-			if len(d.escape) == 2 && b == '[' {
+			if len(d.escape) == 2 && (b == '[' || b == 'O') {
 				continue
 			}
 			if len(d.escape) > 2 && b < 0x40 && len(d.escape) < inputEscapeLimit {

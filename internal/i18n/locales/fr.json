@@ -61,7 +61,7 @@
     "history_empty": "Aucune sortie conservée.",
     "history_hint": "↑/↓ défiler · PgUp/PgDn page · ←/→ déplacer · Home/End · Esc/q retour",
     "monitor": "Surveillance",
-    "monitor_hint": "F12 liste · Ctrl+F rechercher · Ctrl+B ↑↓ changer · Ctrl+Entrée plein écran",
+    "monitor_hint": "↑↓ changer · Esc/F12 liste · Ctrl+F rechercher · Ctrl+Entrée plein écran",
     "monitor_select": "Choisissez une session",
     "monitor_unavailable": "Surveillance impossible",
     "monitor_busy": "Une autre fenêtre utilise cette session.",

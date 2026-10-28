@@ -4,9 +4,70 @@ import (
 	"bytes"
 	"os"
 	"testing"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/raywcm/mtask/internal/monitor"
 )
+
+func TestMonitorNavigationNeverReachesApplication(t *testing.T) {
+	for _, test := range []struct{ raw, want string }{
+		{"\x1b[A", "previous"}, {"\x1b[B", "next"},
+		{"\x1bOA", "previous"}, {"\x1bOB", "next"},
+		{"\x1b[57352u", "previous"}, {"\x1b[57353u", "next"},
+		{"\x1b[27u", "back"},
+	} {
+		for split := 0; split <= len(test.raw); split++ {
+			actions := make(chan monitorAction, 2)
+			route := &monitorInput{notify: func(a monitorAction) { actions <- a }}
+			route.Begin()
+			// An unavailable Input implementation makes any accidental forwarding
+			// an input-error rather than the expected navigation action.
+			route.SetTarget(&monitor.Session{})
+			route.forward([]byte(test.raw[:split]))
+			route.forward([]byte(test.raw[split:]))
+			select {
+			case action := <-actions:
+				if action.kind != test.want || action.err != nil {
+					t.Fatalf("%q split %d: %+v", test.raw, split, action)
+				}
+			case <-time.After(time.Second):
+				t.Fatalf("%q split %d was not handled", test.raw, split)
+			}
+			route.Stop()
+		}
+	}
+}
+
+func TestStandaloneEscReturnsAndStaleTimeoutCannotConsumeArrow(t *testing.T) {
+	actions := make(chan monitorAction, 2)
+	route := &monitorInput{notify: func(a monitorAction) { actions <- a }}
+	target := &monitor.Session{}
+	route.Begin()
+	route.SetTarget(target)
+	route.forward([]byte{0x1b})
+	route.mu.Lock()
+	old := route.timerGeneration
+	route.mu.Unlock()
+	route.forward([]byte{'['})
+	route.flush(target, old)
+	route.forward([]byte{'B'})
+	if action := <-actions; action.kind != "next" {
+		t.Fatalf("stale Esc timeout intercepted a split arrow: %+v", action)
+	}
+	route.Begin()
+	route.SetTarget(target)
+	route.forward([]byte{0x1b})
+	select {
+	case action := <-actions:
+		if action.kind != "back" || action.err != nil {
+			t.Fatalf("Esc reached application: %+v", action)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("standalone Esc did not return")
+	}
+	route.Stop()
+}
 
 func TestMonitorTypeaheadAndFailureRelease(t *testing.T) {
 	read, write, err := os.Pipe()
