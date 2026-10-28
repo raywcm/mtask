@@ -38,13 +38,8 @@ func (m model) palette() palette {
 }
 func (m model) header(width int) string {
 	p := m.palette()
-	lang := config.LanguageName(m.locale().Language)
 	brand := p.accent.Bold(true).Render("MTasK") + "  " + p.muted.Render("v"+strings.TrimPrefix(m.version, "v"))
-	hint := p.muted.Render(lang + " · , " + m.locale().Text("settings"))
-	if ansi.StringWidth(brand)+ansi.StringWidth(hint)+2 > width {
-		return ansi.Truncate(brand, width, "…")
-	}
-	return brand + strings.Repeat(" ", width-ansi.StringWidth(brand)-ansi.StringWidth(hint)) + hint
+	return ansi.Truncate(brand, width, "…")
 }
 func (m model) tabs(width int) string {
 	p := m.palette()

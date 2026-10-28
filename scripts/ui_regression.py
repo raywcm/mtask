@@ -110,7 +110,7 @@ def main():
             ]:
                 h.cli('settings','set','language',code)
                 pid,fd=h.spawn_tty();terminal=Terminal()
-                wait_view(fd,terminal,lambda text:native in text and stopped in text and 'completed-work' in text)
+                wait_view(fd,terminal,lambda text:stopped in text and 'completed-work' in text)
                 os.write(fd,b',')
                 text=wait_view(fd,terminal,lambda text:language_label in text and native in text and 'completed-work' not in text)
                 assert 'RSS' not in text and '100%' not in text
