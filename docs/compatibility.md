@@ -10,7 +10,7 @@ of an application.
 | Target | Evidence | Scope / remaining work |
 | --- | --- | --- |
 | macOS arm64 | Local execution and automated real-PTY acceptance | CLI/TUI, task lifecycle, Unicode, terminal-cell rendering, resize, detach/reconnect, connection modes, retention, interruption and atomic upgrades |
-| Ubuntu 24.04.3 LTS arm64 | SSH deployment and isolated real-PTY regression | Previous full lifecycle/SSH-loss acceptance; current-version targeted regression is recorded in the development log. Distribution package installation is a separate test. |
+| Ubuntu 24.04.3 LTS arm64 | SSH deployment and isolated real-PTY regression | Current version passed all nine acceptance suites on a native host; prior SSH-loss acceptance also preserved process identity. Distribution package installation is a separate test. |
 | Linux amd64 | Cross-build | No native machine execution claimed. Ubuntu CI is configured but hosted runs are pending. |
 | macOS amd64 | Cross-build | No native Intel Mac execution claimed. |
 | Debian / RPM-based distributions | Packages and payload checks | Native install/remove/upgrade execution remains pending. |

@@ -438,3 +438,13 @@ v1 增加可选 attach_mode/capabilities 字段和协商后的 Notice(12)。新�
 新增 tui_exit_regression.py，在列表、设置、确认弹窗、监控、历史五个页面分别发送 Ctrl+C/INT/TERM/HUP，检查主屏幕单元、光标可见、ICANON/ECHO 恢复、任务身份不变及监控租约释放，并验证改变尺寸后的 q 退出。统一 acceptance.py 汇总九组真实进程/PTY 回归与短期并发观察；单元 race 和 vet、25 份依赖声明检查、macOS ARM64 全部九组验收通过。报告保存于 dist/acceptance/macos-arm64-race.json。修正测试等待回收时不排空 PTY 可能导致假死的问题；终端测试在等待退出时继续读取输出。Linux 慢启动场景将快速退出输出和 TUI 返回的固定等待改为等待真实输出条件。
 
 可选应用烟测：Codex CLI 0.164.0-alpha.11.1、OpenCode 1.18.30 与 Shell 共六个临时任务，两轮进入/断开保持原 PID；没有提交模型提示。OpenCode 在短暂直接启动观察内输出为 0 字节，故此结果仅作进程生命周期证据，不声明可见启动等价或完整 AI 工作流通过。
+
+交付补充：Ubuntu 24.04.3 / aarch64 上当前生产二进制通过全部九组验收，含真实 htop 重连、五语言界面、多端权限、监控、历史和五页面中断退出。短期 16 任务观察的 Broker RSS 为 146488 → 148960 KiB，此短测不作为长期无泄漏承诺。校验 SHA-256 后原子更新 /usr/local/bin/mtask 为 0.4.3-dev；替换前后 8 个原有运行会话的实例、Broker/Child PID 和进程出生标识一致，8 个仍运行，未连接或调整它们的尺寸。完整结果保存于 dist/acceptance/ubuntu-arm64.json。
+
+本地最终生产二进制再次通过退出回归；四目标 bin 已更新。GoReleaser 在独立临时分发目录生成八个归档/Deb/RPM，校验架构、负载、权限、MIT、25 份依赖许可证及 SHA-256 均通过；本地无签名 APT 索引生成成功，没有覆盖原有 dist 验收记录或公开上传。
+
+首次 Linux 验收遇到测试脚本对 /tmp/scripts 的目录假设及固定等待不足，修正为相对脚本目录和实际输出条件后全套通过；这些失败未计为已通过结果。初次本地应用烟测同样因未排空 PTY 的测试回收方式超时，修正后仅记录最终明确的进程身份结果。
+
+通过用户现有 Safari 登录，确认所有者 raywcm，以 Private 可见性创建 https://github.com/raywcm/mtask。没有开启公开可见性、发布 Release、增加协作者或生成凭据。HTTPS Git 认证返回 Invalid username or token，网页登录与命令行 Git 凭据是不同入口；后续推送状态另记。
+
+Git 推送前认证检查：使用官方公布的 ED25519 主机公钥放入独立临时 known_hosts 严格验证后，现有 SSH 登录仍返回 Permission denied (publickey)。未关闭主机校验、添加 SSH 授权、生成令牌或改变账号安全设置。私有远端已建，本地提交与全部源码可审阅；推送等待用户完成 Git 身份验证，不把浏览器登录误当作 Git 推送权限。

@@ -24,7 +24,7 @@ make build
 "$HOME/.local/bin/mtask" --version
 ```
 
-以上是计划使用的仓库地址，远端尚待创建。已有本地源码时从 `make build` 开始。
+仓库目前为私有，克隆需要 raywcm/mtask 的访问权限。已有本地源码时从 `make build` 开始。
 如果 `~/.local/bin` 未加入 PATH，可以继续使用完整路径或 `./bin/mtask`。安装器原子替换程序，不重启已有任务。
 
 ## 第一个会话

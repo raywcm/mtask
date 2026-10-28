@@ -22,7 +22,7 @@ goreleaser check
 goreleaser release --snapshot --clean --skip=publish
 ```
 
-GoReleaser 需要含 commit 的 Git checkout；不要为了打包修改用户全局 Git 配置。模块路径和计划仓库为 github.com/raywcm/mtask；本地仓库已初始化，远端尚待创建。
+GoReleaser 需要含 commit 的 Git checkout；不要为了打包修改用户全局 Git 配置。模块路径和计划仓库为 github.com/raywcm/mtask；本地仓库已初始化，同名私有远端已创建，暂不公开。
 
 输出包括 Linux/macOS × amd64/arm64 的单二进制归档、Linux 两架构的 Deb/RPM 包与 SHA-256 校验清单。`CGO_ENABLED=0`，Linux 无 libc 运行时依赖。
 

@@ -85,3 +85,16 @@ not attach to or resize those user tasks.
 macOS and Ubuntu ARM64 execution, build-only targets, and pending native package
 manager/GUI-terminal checks are separated in the [compatibility matrix](compatibility.md).
 No hosted-CI success is claimed until the configured workflow actually runs.
+
+## Demo recording
+
+The checked-in GIF and asciinema v2 recording come from an actual temporary shell
+session, not fabricated terminal content. To regenerate with Pillow:
+
+```sh
+.venv/bin/pip install -r scripts/requirements-demo.txt
+.venv/bin/python scripts/record_demo.py --binary ./bin/mtask --font /path/to/monospace.ttf
+```
+
+The default font is Menlo on macOS. Use a local monospace font on Linux. Captions
+describe the recorded actions; no AI requests or SSH reconnects are performed.

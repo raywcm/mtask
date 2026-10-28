@@ -31,8 +31,8 @@ make build
 "$HOME/.local/bin/mtask" --version
 ```
 
-The repository URL is the intended project location; its remote creation is
-pending. From a local source checkout, start with `make build`.
+The repository is currently private; cloning requires access to `raywcm/mtask`.
+From an existing local source checkout, start with `make build`.
 If `~/.local/bin` is not on your PATH, use the full path above or `./bin/mtask`.
 The installer replaces the executable atomically and leaves existing tasks running.
 
