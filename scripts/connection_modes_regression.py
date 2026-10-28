@@ -144,14 +144,14 @@ def test_cli_and_tui(h):
         os.write(fd,b'\r')
         wait_view(fd,term,lambda text:'Connection modes' in text and 'already has a controller' in text)
         os.write(fd,b'\r');wait_view(fd,term,lambda text:'Read only' in text and 'Connection modes' not in text)
-        os.write(fd,b'\x02d');wait_view(fd,term,lambda text:'mode-ui' in text and 'Memory' in text)
+        os.write(fd,b'\x02d');wait_view(fd,term,lambda text:term.alternate and 'mode-ui' in text and 'Memory' in text)
         # Choose shared control and send input from both ends.
         os.write(fd,b'c');wait_view(fd,term,lambda text:'Connection modes' in text)
         os.write(fd,b'\x1b[B\r');wait_view(fd,term,lambda text:'Shared control' in text and 'Connection modes' not in text)
         os.write(fd,b'from-ui-shared\n');output(owner,b'ECHO:from-ui-shared\n')
         frame(owner,3,b'from-other-controller\n')
         wait_view(fd,term,lambda text:'ECHO:from-other-controller' in text)
-        os.write(fd,b'\x02d');wait_view(fd,term,lambda text:'Memory' in text)
+        os.write(fd,b'\x02d');wait_view(fd,term,lambda text:term.alternate and 'Memory' in text)
         # Takeover requires a second, explicit confirmation.
         os.write(fd,b'c');wait_view(fd,term,lambda text:'Connection modes' in text)
         os.write(fd,b'\x1b[A\r');wait_view(fd,term,lambda text:'y confirm' in text)
