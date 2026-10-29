@@ -127,7 +127,8 @@
     "search_empty": "Aucune session correspondante",
     "search_hint": "Saisir pour filtrer · ↑↓/PgUp/PgDn choisir · Entrée confirmer · Esc retour",
     "sessions": "sessions",
-    "move_session": "Déplacer la session"
+    "move_session": "Déplacer la session",
+    "monitor_parser_error": "Impossible de rendre cette sortie. Esc : liste ; Entrée : session directe."
   },
   "cli": {
     "disconnect existing controllers and take control": "déconnecter les contrôleurs et prendre le contrôle",

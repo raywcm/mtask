@@ -127,7 +127,8 @@
     "search_empty": "No matching sessions",
     "search_hint": "Type to filter · ↑↓/PgUp/PgDn select · Enter confirm · Esc back",
     "sessions": "sessions",
-    "move_session": "Move selected session"
+    "move_session": "Move selected session",
+    "monitor_parser_error": "Cannot render this output. Esc: list; Enter: native session."
   },
   "cli": {
     "disconnect existing controllers and take control": "disconnect existing controllers and take control",

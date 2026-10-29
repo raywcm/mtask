@@ -49,6 +49,7 @@ jobs:
           "$RUNNER_TEMP/tdock-screen/bin/python" scripts/connection_modes_regression.py bin/tdock
           "$RUNNER_TEMP/tdock-screen/bin/python" scripts/tmux_cli_regression.py bin/tdock
           "$RUNNER_TEMP/tdock-screen/bin/python" scripts/monitor_control_regression.py bin/tdock
+          "$RUNNER_TEMP/tdock-screen/bin/python" scripts/monitor_panic_regression.py bin/tdock
           "$RUNNER_TEMP/tdock-screen/bin/python" scripts/multi_terminal_regression.py bin/tdock
           "$RUNNER_TEMP/tdock-screen/bin/python" scripts/theme_regression.py bin/tdock
           "$RUNNER_TEMP/tdock-screen/bin/python" scripts/multi_terminal_regression.py bin/tdock "$RUNNER_TEMP/legacy-mtask"

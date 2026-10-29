@@ -127,7 +127,8 @@
     "search_empty": "No hay sesiones coincidentes",
     "search_hint": "Escribir para filtrar · ↑↓/PgUp/PgDn elegir · Enter confirmar · Esc volver",
     "sessions": "sesiones",
-    "move_session": "Mover sesión"
+    "move_session": "Mover sesión",
+    "monitor_parser_error": "No se puede mostrar esta salida. Esc: lista; Enter: sesión directa."
   },
   "cli": {
     "disconnect existing controllers and take control": "desconectar a los controladores y tomar el control",

@@ -6,6 +6,7 @@ package monitor
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/charmbracelet/x/ansi"
 	"github.com/charmbracelet/x/vt"
 	"github.com/raywcm/taskdock/internal/ipc"
 	"github.com/raywcm/taskdock/internal/protocol"
@@ -40,11 +42,28 @@ type Session struct {
 	connected  chan struct{}
 }
 
+var ErrEmulation = errors.New("terminal preview parser failed")
+
 func Open(ctx context.Context, repository *store.JSON, record task.Record, size task.Size) *Session {
 	ctx, cancel := context.WithCancel(ctx)
 	s := &Session{cancel: cancel, done: make(chan struct{}), connected: make(chan struct{}), resize: make(chan task.Size, 1)}
-	go func() { defer close(s.done); s.run(ctx, repository, record, size) }()
+	go s.supervise(func() { s.run(ctx, repository, record, size) })
 	return s
+}
+
+// A preview is disposable. A dependency panic must unwind its leases/readers,
+// then become a pane error instead of terminating the terminal-owning process.
+func (s *Session) supervise(run func()) {
+	defer close(s.done)
+	defer s.cancel()
+	defer func() {
+		if failure := recover(); failure != nil {
+			s.mu.Lock()
+			s.frame.Err = fmt.Errorf("%w: %v", ErrEmulation, failure)
+			s.mu.Unlock()
+		}
+	}()
+	run()
 }
 func (s *Session) Snapshot() Frame { s.mu.RLock(); defer s.mu.RUnlock(); return s.frame }
 func (s *Session) Resize(size task.Size) {
@@ -101,6 +120,20 @@ func dimensions(size task.Size) (int, int) {
 }
 func newScreen(width, height int) *vt.Emulator {
 	e := vt.NewEmulator(width, height)
+	// Retained output may describe a larger terminal. x/vt v0.1.0 accepts
+	// out-of-screen margins, then panics on insert/delete/reverse-index. Ignore
+	// those invalid regions before the dependency can store them. Native attach
+	// remains byte transparent; this only applies to the offscreen preview.
+	e.RegisterCsiHandler('r', func(params ansi.Params) bool {
+		top, _, _ := params.Param(0, 1)
+		bottom, _, _ := params.Param(1, e.Height())
+		return top > e.Height() || bottom > e.Height()
+	})
+	e.RegisterCsiHandler('s', func(params ansi.Params) bool {
+		left, _, _ := params.Param(0, 1)
+		right, _, _ := params.Param(1, e.Width())
+		return left > e.Width() || right > e.Width()
+	})
 	e.SetScrollbackSize(0)
 	// VT device queries can write synchronously to the input pipe. Closing it
 	// discards those replies without a reader goroutine or any application input.

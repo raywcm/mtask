@@ -124,7 +124,9 @@ func (m model) monitorView(width int) []string {
 			}
 			if y == height/2+1 {
 				var remote *ipc.RemoteError
-				if errors.As(preview.Err, &remote) && remote.Code == "busy" {
+				if errors.Is(preview.Err, monitor.ErrEmulation) {
+					content = t("monitor_parser_error")
+				} else if errors.As(preview.Err, &remote) && remote.Code == "busy" {
 					content = t("monitor_busy")
 				} else {
 					content = safe(preview.Err.Error())
