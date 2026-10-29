@@ -60,7 +60,7 @@
     "history_empty": "No retained output.",
     "history_hint": "↑/↓ scroll · PgUp/PgDn page · ←/→ pan · Home/End · Esc/q back",
     "monitor": "Monitor",
-    "monitor_hint": "↑↓ switch · Ctrl+↑↓ application arrows · Esc/F12 list · Ctrl+F search",
+    "monitor_hint": "↑↓ switch · Shift+↑↓ application arrows · Esc/F12 list · Ctrl+F search",
     "monitor_select": "Select a session",
     "monitor_unavailable": "Unable to monitor",
     "monitor_busy": "This session is in use by another terminal.",

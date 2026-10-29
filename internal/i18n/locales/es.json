@@ -61,7 +61,7 @@
     "history_empty": "No hay salida guardada.",
     "history_hint": "↑/↓ desplazar · PgUp/PgDn página · ←/→ horizontal · Home/End · Esc/q volver",
     "monitor": "Monitor",
-    "monitor_hint": "↑↓ sesión · Ctrl+↑↓ flechas app · Esc/F12 lista · Ctrl+F buscar",
+    "monitor_hint": "↑↓ sesión · Shift+↑↓ flechas app · Esc/F12 lista · Ctrl+F buscar",
     "monitor_select": "Elige una sesión",
     "monitor_unavailable": "No se puede monitorizar",
     "monitor_busy": "Otra terminal está utilizando esta sesión.",

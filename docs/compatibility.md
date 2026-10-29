@@ -78,4 +78,4 @@ its full workflow has not been tested here.
 
 A shared native terminal has one PTY size. Use monitor panes for differently
 sized windows; followers crop the owner’s screen without resizing the program.
-The OS or terminal must pass Ctrl+Up/Down through for those monitor bindings.
+The OS or terminal must pass Shift+Up/Down through for those monitor bindings.

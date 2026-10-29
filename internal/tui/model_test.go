@@ -3,6 +3,7 @@ package tui
 import (
 	"context"
 	"fmt"
+	"image/color"
 	"strings"
 	"testing"
 	"time"
@@ -807,7 +808,7 @@ func TestMonitorHorizontalKeysDoNothing(t *testing.T) {
 func TestContextHintsStayInTitleRow(t *testing.T) {
 	for _, language := range config.LanguageCodes() {
 		for _, width := range []int{44, 80, 160} {
-			for _, mode := range []string{"", "search", "history", "connect", "settings", "monitor"} {
+			for _, mode := range []string{"", "help", "search", "history", "connect", "settings", "monitor"} {
 				m := readyModel(t)
 				m.settings.Language = language
 				m.width = width
@@ -819,7 +820,7 @@ func TestContextHintsStayInTitleRow(t *testing.T) {
 				case "monitor":
 					m.mode = ""
 					m.monitoring = true
-					key = "Ctrl+"
+					key = "Shift+"
 				case "settings":
 					m.tab = tabSettings
 					m.draft = m.settings
@@ -850,5 +851,50 @@ func TestShiftMoveKeepsSelectedID(t *testing.T) {
 	current, ok := m.current()
 	if !ok || current.Spec.ID != selected || m.cursors[0] != 1 {
 		t.Fatal("moved selection lost its ID")
+	}
+}
+
+func TestDialogTitleHintsMatchTheDialogKeys(t *testing.T) {
+	for _, code := range config.LanguageCodes() {
+		m := readyModel(t)
+		m.settings.Language = code
+		for _, mode := range []string{"new", "rename", "stop", "delete", "takeover", "name-conflict"} {
+			m.mode = mode
+			expected := m.locale().Text("confirm_hint")
+			if mode == "new" || mode == "rename" {
+				expected = m.locale().Text("edit_hint")
+			}
+			if got := ansi.Strip(m.helpLine(300)); got != expected {
+				t.Fatalf("%s %s: %q, expected %q", code, mode, got, expected)
+			}
+		}
+	}
+}
+
+func TestAutomaticThemeMatchesExplicitTheme(t *testing.T) {
+	t.Setenv("COLORFGBG", "")
+	for _, test := range []struct {
+		background color.Color
+		theme      string
+	}{{color.White, "light"}, {color.Black, "dark"}} {
+		m := readyModel(t)
+		m.settings.Theme = "auto"
+		next, _ := m.Update(tea.BackgroundColorMsg{Color: test.background})
+		m = next.(model)
+		if m.resolvedTheme() != test.theme {
+			t.Fatal("automatic background chose the wrong theme")
+		}
+		manual := m
+		manual.settings.Theme = test.theme
+		if m.palette().accent.GetForeground() != manual.palette().accent.GetForeground() || m.View().Content != manual.View().Content {
+			t.Fatal("automatic and explicit palette differ")
+		}
+	}
+	m := readyModel(t)
+	m.settings.Theme = "light"
+	next, _ := m.Update(tea.BackgroundColorMsg{Color: color.Black})
+	m = next.(model)
+	if m.resolvedTheme() != "light" {
+		t.Fatal("terminal background overrode the explicit choice")
 	}
 }

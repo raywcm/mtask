@@ -59,16 +59,16 @@ def cooperation(h):
  os.write(f2,b'from-two');until(lambda:received(h,'alpha')==b'from-onefrom-two')
  wait_view(f1,t1,lambda s:'INPUT:' in s);wait_view(f2,t2,lambda s:'INPUT:' in s)
  expected=b'from-onefrom-two'
- for key,arrow in [(b'\x1b[1;5A',b'\x1b[A'),(b'\x1b[1;5B',b'\x1b[B'),(b'\x1b[57352;5:2u',b'\x1b[A'),(b'\x1b[57353;5:3u',b'')]:
+ for key,arrow in [(b'\x1b[1;5A',b'\x1b[1;5A'),(b'\x1b[1;2A',b'\x1b[A'),(b'\x1b[1;2B',b'\x1b[B'),(b'\x1b[57352;2:2u',b'\x1b[A'),(b'\x1b[57353;2:3u',b'')]:
   os.write(f2,key+b'next');expected+=arrow+b'next';until(lambda:received(h,'alpha')==expected)
- paste=b'\x1b[200~\x1b[1;5A\x1b[201~'
+ paste=b'\x1b[200~\x1b[1;2A\x1b[201~'
  os.write(f2,paste);expected+=paste;until(lambda:received(h,'alpha')==expected)
- assert selected(t2,'alpha'),'Ctrl arrows moved the list selection'
- assert 'Ctrl+' in t1.display[0] and 'Esc/F12' in t1.display[0]
+ assert selected(t2,'alpha'),'Shift arrows moved the list selection'
+ assert 'Shift+' in t1.display[0] and 'Esc/F12' in t1.display[0]
  offset=len(h.cli('logs','alpha','--raw').stdout)
  for rows,cols in [(32,100),(28,110),(30,120)]:
   resize(p2,f2,t2,rows,cols)
-  wait_view(f2,t2,lambda s:'TaskDock' in t2.display[0] and 'Ctrl+' in t2.display[0] and 'Control' in s)
+  wait_view(f2,t2,lambda s:'TaskDock' in t2.display[0] and 'Shift+' in t2.display[0] and 'Control' in s)
  assert latest_size(h,'alpha')==(17,54),'a follower resized the owner PTY'
  assert b'SIZE:' not in h.cli('logs','alpha','--raw').stdout[offset:],'follower geometry bounced the PTY'
  # Closing the owner promotes the other monitor and applies its pane once.
@@ -93,7 +93,7 @@ def cooperation(h):
  for p,f in [(p1,f1),(p2,f2)]:os.write(f,b'q');assert h.join(p)==0
  now=h.show('alpha')['runtime']
  for field in ['instance_id','broker_pid','child_pid']:assert now[field]==original[field]
- print('PASS two different-size monitors share viewing/input, Ctrl arrows/paste, stable owner size, automatic promotion, ordinary Enter shared, readonly isolation and explicit takeover with readers retained; PIDs unchanged',flush=True)
+ print('PASS two different-size monitors share viewing/input, Shift arrows/paste, stable owner size, automatic promotion, ordinary Enter shared, readonly isolation and explicit takeover with readers retained; PIDs unchanged',flush=True)
 
 
 def main():

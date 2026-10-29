@@ -110,7 +110,7 @@ Unix UID. Older brokers retain ordinary exclusive attach.
 
 In the TUI, new sessions open selected in the monitor. In the task list, Enter
 opens a session fullscreen; `v` opens the monitor. Ordinary input, Enter, ←/→,
-Ctrl+C/D and pasted text in the monitor go to the application. Ctrl+↑/↓ sends
+Ctrl+C/D and pasted text in the monitor go to the application. Shift+↑/↓ sends
 ordinary application arrow keys. ↑/↓ switches
 sessions; Esc, F12 or Ctrl+B, d returns to the list. To enter a session, return
 to the list first. Ctrl+Enter is ignored throughout the manager and monitor.
@@ -167,3 +167,7 @@ OOM or host login-session cleanup can end tasks. A crashed broker's PTY cannot
 be recovered; `tdock recover TASK` reconciles stale records without signalling
 old PIDs. Installation replaces the executable atomically and leaves existing
 brokers running. See [compatibility](compatibility.md) for terminal limitations.
+
+Automatic theme reads the terminal background and uses the same colors as the
+matching Light/Dark setting. COLORFGBG is a fallback for terminals without a
+background-color reply; explicit theme choices always take priority.

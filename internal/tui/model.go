@@ -114,6 +114,7 @@ type model struct {
 	generation                           uint64
 	cancelLoad                           context.CancelFunc
 	message                              string
+	backgroundKnown, darkBackground      bool
 }
 
 func newModel(ctx context.Context, catalog Backend, notice error, options Options) model {
@@ -252,8 +253,10 @@ func (m *model) startLoad() tea.Cmd {
 		return loaded{rows, err, generation}
 	}
 }
-func tickCmd() tea.Cmd        { return tea.Tick(time.Second, func(t time.Time) tea.Msg { return tick(t) }) }
-func (m model) Init() tea.Cmd { return func() tea.Msg { return tick(time.Now()) } }
+func tickCmd() tea.Cmd { return tea.Tick(time.Second, func(t time.Time) tea.Msg { return tick(t) }) }
+func (m model) Init() tea.Cmd {
+	return tea.Batch(func() tea.Msg { return tick(time.Now()) }, tea.RequestBackgroundColor)
+}
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	next, cmd := m.update(msg)
 	updated := next.(model)
@@ -282,7 +285,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.BackgroundColorMsg:
+		if msg.Color != nil {
+			m.backgroundKnown, m.darkBackground = true, msg.IsDark()
+			return m, tea.ClearScreen
+		}
+		return m, nil
 	case monitorAction:
+		if msg.kind == "background" {
+			return m.update(msg.background)
+		}
 		if msg.ready != nil {
 			defer close(msg.ready)
 		}

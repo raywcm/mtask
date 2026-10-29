@@ -14,11 +14,12 @@ import (
 )
 
 type monitorAction struct {
-	kind    string
-	session *monitor.Session
-	err     error
-	raw     []byte
-	ready   chan struct{}
+	background tea.BackgroundColorMsg
+	kind       string
+	session    *monitor.Session
+	err        error
+	raw        []byte
+	ready      chan struct{}
 }
 
 // The same cancelable TTY reader serves Bubble Tea and the embedded terminal.
@@ -68,7 +69,20 @@ func (r *monitorInput) resetLocked() {
 		}
 		r.commands = append(r.commands, command)
 		return true
-	}, Ignore: monitorIgnoredKey, Transform: monitorApplicationKey}
+	}, Ignore: monitorIgnoredKey, Transform: monitorApplicationKey, Report: func(raw []byte) bool {
+		if len(raw) < 3 || raw[0] != 0x1b || raw[1] != ']' {
+			return false
+		}
+		var decoder uv.EventDecoder
+		n, event := decoder.Decode(raw)
+		if color, ok := event.(uv.BackgroundColorEvent); ok && n == len(raw) {
+			if r.notify != nil {
+				r.notify(monitorAction{kind: "background", background: tea.BackgroundColorMsg(color)})
+			}
+			return true
+		}
+		return false
+	}}
 	r.commands = nil
 }
 func (r *monitorInput) Arm(armed bool) { r.mu.Lock(); r.armed = armed; r.mu.Unlock() }
@@ -194,7 +208,11 @@ func (r *monitorInput) route(raw []byte, fromRead bool) []byte {
 		r.resetLocked()
 	} else if r.decoder.PendingEscape() {
 		generation := r.timerGeneration
-		r.timer = time.AfterFunc(50*time.Millisecond, func() { r.flush(target, generation) })
+		delay := 50 * time.Millisecond
+		if r.decoder.PendingReport() {
+			delay = 500 * time.Millisecond
+		}
+		r.timer = time.AfterFunc(delay, func() { r.flush(target, generation) })
 	}
 	r.mu.Unlock()
 	if len(data) > 0 {
@@ -282,14 +300,14 @@ func monitorApplicationKey(raw []byte) []byte {
 		key = uv.Key(e)
 	case uv.KeyReleaseEvent:
 		key = uv.Key(e)
-		if key.Mod & ^(uv.ModCapsLock|uv.ModNumLock) == uv.ModCtrl && (key.Code == uv.KeyUp || key.Code == uv.KeyDown) {
+		if key.Mod & ^(uv.ModCapsLock|uv.ModNumLock) == uv.ModShift && (key.Code == uv.KeyUp || key.Code == uv.KeyDown) {
 			return nil
 		}
 		return raw
 	default:
 		return raw
 	}
-	if key.Mod & ^(uv.ModCapsLock|uv.ModNumLock) == uv.ModCtrl {
+	if key.Mod & ^(uv.ModCapsLock|uv.ModNumLock) == uv.ModShift {
 		if key.Code == uv.KeyUp {
 			return []byte("\x1b[A")
 		}
@@ -317,11 +335,11 @@ func monitorIgnoredKey(raw []byte, key uint16) bool {
 // Preserve key events that were decoded just before v enabled the raw route.
 func prefetchedMonitorKey(msg tea.KeyPressMsg) []byte {
 	k := msg.Key()
-	if k.Mod == tea.ModCtrl && (k.Code == tea.KeyUp || k.Code == tea.KeyDown) {
+	if k.Mod == tea.ModShift && (k.Code == tea.KeyUp || k.Code == tea.KeyDown) {
 		if k.Code == tea.KeyUp {
-			return []byte("\x1b[1;5A")
+			return []byte("\x1b[1;2A")
 		}
-		return []byte("\x1b[1;5B")
+		return []byte("\x1b[1;2B")
 	}
 	if k.Code == tea.KeyEnter && k.Mod == tea.ModCtrl {
 		return []byte("\x1b[13;5u")

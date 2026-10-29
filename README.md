@@ -85,7 +85,7 @@ all keys, including F12, to the application.
 New sessions created from the TUI open selected in the monitor, with a narrow
 session list and a wide control pane. Type
 directly, including Enter; use **Ctrl+F** to search, **↑/↓** to switch tasks, and
-**Esc/F12** to return to the list. Ctrl+↑/↓ sends ordinary arrow keys to the application. Enter opens a session from the list; `v` opens
+**Esc/F12** to return to the list. Shift+↑/↓ sends ordinary arrow keys to the application. Enter opens a session from the list; `v` opens
 the monitor. The monitor has no fullscreen shortcut. Ctrl+Enter is ignored.
 Default connections share control automatically. Use `c` to choose read-only,
 shared control or a confirmed takeover. The first controller sets the size;

@@ -18,18 +18,31 @@ import (
 
 type palette struct{ accent, muted lipgloss.Style }
 
-func (m model) palette() palette {
+func (m model) resolvedTheme() string {
 	theme := m.settings.Theme
 	if m.mode == "settings" {
 		theme = m.draft.Theme
 	}
-	dark := theme != "light"
-	if theme == "auto" {
-		parts := strings.Split(os.Getenv("COLORFGBG"), ";")
-		if n, err := strconv.Atoi(parts[len(parts)-1]); err == nil {
-			dark = n != 7 && n != 15
-		}
+	if theme != "auto" {
+		return theme
 	}
+	if m.backgroundKnown {
+		if m.darkBackground {
+			return "dark"
+		}
+		return "light"
+	}
+	parts := strings.Split(os.Getenv("COLORFGBG"), ";")
+	if n, err := strconv.Atoi(parts[len(parts)-1]); err == nil {
+		if n == 7 || n == 15 {
+			return "light"
+		}
+		return "dark"
+	}
+	return "auto"
+}
+func (m model) palette() palette {
+	dark := m.resolvedTheme() != "light"
 	accent, muted := "#70E1C8", "#909BAE"
 	if !dark {
 		accent, muted = "#006C70", "#536175"
@@ -130,23 +143,25 @@ func (m model) helpLine(width int) string {
 	t, p := m.locale().Text, m.palette()
 	hint, compact := "", ""
 	switch {
+	case m.mode == "help":
+		hint, compact = t("help_close_hint"), "Esc / ?"
 	case m.mode == "search":
 		hint, compact = t("search_hint"), "↑↓ Enter Esc"
 	case m.mode == "history":
 		hint, compact = t("history_hint"), "↑↓ PgUp/PgDn Esc"
-	case m.mode == "connect" || m.mode == "takeover":
+	case m.mode == "connect":
 		hint, compact = t("connection_hint"), "↑↓ Enter Esc"
-	case m.hasDialog():
-		hint, compact = t("confirm_hint"), "Enter Esc"
 	case m.mode == "new" || m.mode == "rename":
 		hint, compact = t("edit_hint"), "Enter Esc"
+	case m.hasDialog():
+		hint, compact = t("confirm_hint"), "Enter Esc"
 	case m.tab == tabSettings:
 		hint, compact = t("settings_tab_hint"), "←→ Enter Esc"
 		if m.settingsEditing {
 			hint, compact = t("settings_hint"), "↑↓ ←→ Enter Esc"
 		}
 	case m.monitoring:
-		hint, compact = t("monitor_hint"), "↑↓ Ctrl+↑↓ Esc/F12 Ctrl+F"
+		hint, compact = t("monitor_hint"), "↑↓ Shift+↑↓ Esc/F12 Ctrl+F"
 		if m.monitorFrame.Err != nil {
 			hint, compact = t("monitor_retry_hint"), "↑↓ F5 Esc/F12"
 		}
@@ -401,10 +416,7 @@ func (m model) View() tea.View {
 	}
 	for i, line := range lines {
 		line = "  " + ansi.Truncate(line, max(1, m.width-4), "…")
-		theme := m.settings.Theme
-		if m.mode == "settings" {
-			theme = m.draft.Theme
-		}
+		theme := m.resolvedTheme()
 		if theme == "light" || theme == "dark" {
 			base := "\x1b[0m\x1b[38;2;229;237;247m\x1b[48;2;20;26;38m"
 			if theme == "light" {

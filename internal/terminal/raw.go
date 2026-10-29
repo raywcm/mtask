@@ -37,6 +37,8 @@ type EscapeDecoder struct {
 	Ignore func([]byte, uint16) bool
 	// Transform changes application keys after manager commands, outside paste.
 	Transform func([]byte) []byte
+	// Report consumes terminal replies owned by an embedded manager.
+	Report func([]byte) bool
 	// Remaining contains bytes after a handled command, for pane switching.
 	Remaining []byte
 	pending   uint16
@@ -67,6 +69,20 @@ func (d *EscapeDecoder) Feed(input []byte) (output []byte, detach bool) {
 		}
 		if len(d.escape) > 0 {
 			d.escape = append(d.escape, b)
+			if d.Report != nil && len(d.escape) >= 2 && d.escape[1] == ']' {
+				end := b == 7 || (len(d.escape) > 2 && d.escape[len(d.escape)-2] == 0x1b && b == '\\')
+				if !end && len(d.escape) < 512 {
+					continue
+				}
+				part, done := d.consume(d.escape, 0)
+				d.escape = nil
+				output = append(output, part...)
+				if done {
+					d.Remaining = append([]byte(nil), input[index+1:]...)
+					return output, true
+				}
+				continue
+			}
 			if len(d.escape) == 2 && (b == '[' || b == 'O') {
 				continue
 			}
@@ -111,6 +127,9 @@ func (d *EscapeDecoder) consume(raw []byte, key uint16) ([]byte, bool) {
 			d.pasting = false
 		}
 		return raw, false
+	}
+	if d.Report != nil && d.Report(raw) {
+		return nil, false
 	}
 	if key == keyF12 {
 		d.pending, d.prefix = 0, nil
@@ -250,6 +269,10 @@ func (d *EscapeDecoder) Flush() []byte {
 
 // PendingEscape reports a partial terminal sequence requiring a short timeout.
 func (d *EscapeDecoder) PendingEscape() bool { return len(d.escape) != 0 }
+
+func (d *EscapeDecoder) PendingReport() bool {
+	return d.Report != nil && len(d.escape) >= 2 && d.escape[1] == ']'
+}
 
 // FlushEscape forwards a standalone Esc without discarding a pending Ctrl+B.
 func (d *EscapeDecoder) FlushEscape() []byte { return d.flushEscape() }

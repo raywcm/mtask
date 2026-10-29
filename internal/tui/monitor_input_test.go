@@ -153,11 +153,12 @@ func TestCtrlEnterIgnoredWithoutLeavingMonitor(t *testing.T) {
 	}
 }
 
-func TestControlArrowsAreApplicationKeys(t *testing.T) {
+func TestShiftArrowsAreApplicationKeys(t *testing.T) {
 	for raw, want := range map[string]string{
-		"\x1b[1;5A": "\x1b[A", "\x1b[1;5B": "\x1b[B",
-		"\x1b[57352;5u": "\x1b[A", "\x1b[57353;5:2u": "\x1b[B",
-		"\x1b[57352;5:3u": "",
+		"\x1b[1;2A": "\x1b[A", "\x1b[1;2B": "\x1b[B",
+		"\x1b[1;5A":     "\x1b[1;5A",
+		"\x1b[57352;2u": "\x1b[A", "\x1b[57353;2:2u": "\x1b[B",
+		"\x1b[57352;2:3u": "",
 	} {
 		for split := 0; split <= len(raw); split++ {
 			r := &monitorInput{}
@@ -171,7 +172,7 @@ func TestControlArrowsAreApplicationKeys(t *testing.T) {
 	}
 	r := &monitorInput{}
 	r.resetLocked()
-	paste := "\x1b[200~\x1b[1;5A\x1b[201~"
+	paste := "\x1b[200~\x1b[1;2A\x1b[201~"
 	out, handled := r.decoder.Feed([]byte(paste))
 	if handled || string(out) != paste {
 		t.Fatal("paste content was transformed")
@@ -197,5 +198,35 @@ func TestMonitorKeysCannotTriggerListActions(t *testing.T) {
 	}
 	if !bytes.Contains(route.pending, []byte("nsqv\x1b[D\x1b[B\r\x1b[24~")) {
 		t.Fatalf("prefetched input lost: %q", route.pending)
+	}
+}
+
+func TestBackgroundReportsStayOutOfMonitorInput(t *testing.T) {
+	for _, raw := range []string{"\x1b]11;rgb:ffff/ffff/ffff\a", "\x1b]11;rgb:0000/0000/0000\x1b\\"} {
+		for split := 0; split <= len(raw); split++ {
+			actions := make(chan monitorAction, 2)
+			r := &monitorInput{notify: func(a monitorAction) { actions <- a }}
+			r.resetLocked()
+			a, done := r.decoder.Feed([]byte(raw[:split]))
+			b, last := r.decoder.Feed([]byte(raw[split:]))
+			if len(a)+len(b) != 0 || done || last {
+				t.Fatalf("reply leaked at split %d", split)
+			}
+			select {
+			case action := <-actions:
+				if action.kind != "background" || action.background.Color == nil {
+					t.Fatal("background was not decoded")
+				}
+			default:
+				t.Fatal("background reply was lost")
+			}
+		}
+	}
+	r := &monitorInput{notify: func(monitorAction) { t.Fatal("literal paste became a terminal reply") }}
+	r.resetLocked()
+	paste := "\x1b[200~\x1b]11;rgb:ffff/ffff/ffff\a\x1b[201~"
+	out, handled := r.decoder.Feed([]byte(paste))
+	if handled || string(out) != paste {
+		t.Fatal("literal pasted OSC was changed")
 	}
 }
