@@ -3,6 +3,8 @@ package terminal
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"github.com/raywcm/taskdock/internal/ipc"
 	"github.com/raywcm/taskdock/internal/protocol"
 	"github.com/raywcm/taskdock/internal/task"
 	"reflect"
@@ -77,9 +79,9 @@ func TestCheckpointSurvivesMissingOldModeEntryAndRejectsOtherInstance(t *testing
 }
 
 func TestRepaintWaitsForAppRedrawAndPreservesFrames(t *testing.T) {
-	frames := make(chan incoming, 4)
-	first := incoming{frame: protocol.Frame{Kind: protocol.Output, Payload: []byte("delta\x1b[2")}}
-	second := incoming{frame: protocol.Frame{Kind: protocol.Output, Payload: []byte("JSTATIC")}}
+	frames := make(chan Incoming, 4)
+	first := Incoming{Frame: protocol.Frame{Kind: protocol.Output, Payload: []byte("delta\x1b[2")}}
+	second := Incoming{Frame: protocol.Frame{Kind: protocol.Output, Payload: []byte("JSTATIC")}}
 	var sizes []task.Size
 	send := func(f protocol.Frame) error {
 		var size task.Size
@@ -93,11 +95,11 @@ func TestRepaintWaitsForAppRedrawAndPreservesFrames(t *testing.T) {
 		}
 		return nil
 	}
-	pending, err := repaint(context.Background(), send, frames, task.Size{Rows: 24, Cols: 80}, time.Second)
+	pending, err := Repaint(context.Background(), send, frames, task.Size{Rows: 24, Cols: 80}, time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(pending, []incoming{first, second}) {
+	if !reflect.DeepEqual(pending, []Incoming{first, second}) {
 		t.Fatalf("changed frame order or bytes: %+v", pending)
 	}
 	if !reflect.DeepEqual(sizes, []task.Size{{Rows: 23, Cols: 80}, {Rows: 24, Cols: 80}}) {
@@ -106,8 +108,8 @@ func TestRepaintWaitsForAppRedrawAndPreservesFrames(t *testing.T) {
 }
 
 func TestRepaintTimeoutIgnoresOSCAndRestoresSize(t *testing.T) {
-	frames := make(chan incoming, 1)
-	frames <- incoming{frame: protocol.Frame{Kind: protocol.Output, Payload: []byte("\x1b]0;[2J\x07\x1b[J")}}
+	frames := make(chan Incoming, 1)
+	frames <- Incoming{Frame: protocol.Frame{Kind: protocol.Output, Payload: []byte("\x1b]0;[2J\x07\x1b[J")}}
 	var sizes []task.Size
 	send := func(f protocol.Frame) error {
 		var size task.Size
@@ -118,7 +120,7 @@ func TestRepaintTimeoutIgnoresOSCAndRestoresSize(t *testing.T) {
 		return nil
 	}
 	start := time.Now()
-	pending, err := repaint(context.Background(), send, frames, task.Size{Rows: 24, Cols: 80}, 30*time.Millisecond)
+	pending, err := Repaint(context.Background(), send, frames, task.Size{Rows: 24, Cols: 80}, 30*time.Millisecond)
 	if err != nil || len(pending) != 1 {
 		t.Fatalf("lost live output: %v %v", pending, err)
 	}
@@ -127,5 +129,16 @@ func TestRepaintTimeoutIgnoresOSCAndRestoresSize(t *testing.T) {
 	}
 	if len(sizes) != 2 || sizes[1].Rows != 24 {
 		t.Fatal("did not restore size", sizes)
+	}
+}
+
+func TestRepaintPreservesTakeoverReasonWithoutRestoringLostLease(t *testing.T) {
+	frames := make(chan Incoming, 1)
+	frames <- Incoming{Frame: ipc.JSON(protocol.Error, protocol.ErrorMessage{Code: "taken_over", Message: "taken over"})}
+	sends := 0
+	_, err := Repaint(context.Background(), func(protocol.Frame) error { sends++; return nil }, frames, task.Size{Rows: 24, Cols: 80}, time.Second)
+	var remote *ipc.RemoteError
+	if !errors.As(err, &remote) || remote.Code != "taken_over" || sends != 1 {
+		t.Fatalf("lost revocation or resized revoked lease: %d %v", sends, err)
 	}
 }

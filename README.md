@@ -1,10 +1,13 @@
 # TaskDock
 
-A terminal task manager for Linux and macOS. Keep programs running after an SSH
-disconnect, then return to them from a task list. No tmux or screen required.
+Keep terminal programs running after you close the terminal or lose SSH.
+Reconnect from a task list, monitor output, or share control from another
+terminal. Linux and macOS, one binary.
 
-TaskDock was previously named mtask. The command is now `tdock`; existing sessions
-and settings are preserved on upgrade.
+Use it for shells, editors, development servers and long-running commands.
+Coding agents such as **Codex, Claude Code and OpenCode** work the same way:
+they run as their native CLI programs, with their own interface. No plugins,
+wrappers or tmux setup.
 
 ![TaskDock demo](docs/assets/demo.gif)
 
@@ -35,6 +38,22 @@ Add `~/.local/bin` to PATH, or run `./bin/tdock` directly.
 
 ## Use
 
+For coding agents, use the tools you already have installed:
+
+```sh
+tdock new -ds codex -- codex
+tdock new -ds claude -- claude
+tdock new -ds opencode -- opencode
+tdock
+```
+
+Select a session and press Enter for its native interface, or `v` to control it
+beside the session list. Sessions keep running when you leave TaskDock.
+The demo uses real Codex and OpenCode processes; see [compatibility](docs/compatibility.md)
+for tested versions and terminal limits.
+
+Shells and other terminal programs work the same way:
+
 ```sh
 tdock new -s work -- bash
 # Press F12 to detach. The task keeps running.
@@ -51,6 +70,7 @@ account after a dropped connection. Tasks do not survive a host reboot.
 | Tab / Shift+Tab | Switch Running, Stop and Settings tabs |
 | n, F2, s, Delete | Create, rename, stop or delete; stop/delete require confirmation |
 | v | Open monitor control |
+| Shift+↑/↓ | Move the selected session; order is saved across terminals |
 | Ctrl+F | Search all sessions by name, ID, directory or command |
 | c | Choose takeover, read-only or shared control |
 | F5, F1/? | Refresh or show help |
@@ -65,8 +85,11 @@ all keys, including F12, to the application.
 New sessions created from the TUI open selected in the monitor, with a narrow
 session list and a wide control pane. Type
 directly, including Enter; use **Ctrl+F** to search, **↑/↓** to switch tasks, and
-**Esc/F12** to return to the list. Enter opens a session from the list; `v` opens
+**Esc/F12** to return to the list. Ctrl+↑/↓ sends ordinary arrow keys to the application. Enter opens a session from the list; `v` opens
 the monitor. The monitor has no fullscreen shortcut. Ctrl+Enter is ignored.
+Default connections share control automatically. Use `c` to choose read-only,
+shared control or a confirmed takeover. The first controller sets the size;
+followers do not resize the application.
 
 ## CLI
 
@@ -90,7 +113,8 @@ two output files of about 8 MiB. All connections use the same Unix account.
 
 Reattach restores known terminal modes and requests an application redraw; it
 cannot restore a full screen snapshot or host-terminal scrollback. Monitoring
-uses the preview pane's PTY size and retains it when leaving.
+shares input across terminals. The oldest controller owns the PTY size; other
+monitors fit that screen into their panes without resizing the application.
 
 - [Usage](docs/usage.md) · [Compatibility](docs/compatibility.md)
 - [Build and packaging](docs/installation.md) · [Testing](docs/stability.md)

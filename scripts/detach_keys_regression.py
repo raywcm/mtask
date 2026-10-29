@@ -81,7 +81,7 @@ def main():
                 # Wait for fresh bytes, after the new client enabled raw mode.
                 terminal.feed(wait_output(fd, b'hotkey-work ['))
                 os.write(fd, key)
-                wait_view(fd, terminal, lambda text: 'Running' in text and 'hotkey-work' in text and 'F12' in text)
+                wait_view(fd, terminal, lambda text: 'Running' in text and 'hotkey-work' in text and 'Enter v' in text)
                 assert h.show(ref)['runtime'] == original
             os.write(fd, b'q'); assert h.join(pid) == 0
 

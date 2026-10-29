@@ -180,6 +180,6 @@ func (m model) searchView(width int) []string {
 	if count > 0 {
 		position = cursor + 1
 	}
-	lines = append(lines, p.muted.Render(fmt.Sprintf("%d / %d · %d %s", position, count, len(m.tasks), t("sessions"))), p.muted.Render(ansi.Truncate(t("search_hint"), width, "…")))
+	lines = append(lines, p.muted.Render(fmt.Sprintf("%d / %d · %d %s", position, count, len(m.tasks), t("sessions"))), "")
 	return lines
 }

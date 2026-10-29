@@ -1,6 +1,6 @@
 // Package monitor reconstructs a screen from bounded task output logs.
-// Its exclusive connection carries keyboard input and owns the pane size.
-// Occupied sessions are refused without displacing their clients.
+// Shared attachments carry keyboard input. The first controller owns the PTY
+// dimensions; other previews render the same screen and crop it to their pane.
 package monitor
 
 import (
@@ -18,6 +18,7 @@ import (
 	"github.com/raywcm/taskdock/internal/protocol"
 	"github.com/raywcm/taskdock/internal/store"
 	"github.com/raywcm/taskdock/internal/task"
+	"github.com/raywcm/taskdock/internal/terminal"
 	"golang.org/x/sys/unix"
 )
 
@@ -64,7 +65,7 @@ func (s *Session) Resize(size task.Size) {
 	}
 }
 
-// Input uses the monitor's existing exclusive display lease. Switching between
+// Input uses the monitor's existing shared display lease. Switching between
 // preview and input never reconnects or changes the PTY dimensions.
 func (s *Session) Input(data []byte) error {
 	if s.connected == nil {
@@ -196,24 +197,26 @@ func feed(ctx context.Context, e *vt.Emulator, f *os.File, limit int64) (bool, e
 	}
 	return false, nil
 }
-func actualSize(ctx context.Context, repository *store.JSON, r task.Record) task.Size {
+func actualSize(ctx context.Context, repository *store.JSON, r task.Record, fallback task.Size) task.Size {
 	if r.Runtime == nil {
-		return r.Spec.Size
+		return fallback
 	}
 	probe, cancel := context.WithTimeout(ctx, 300*time.Millisecond)
 	defer cancel()
 	conn, err := ipc.Connect(probe, repository.Root(), *r.Runtime, "control", nil)
 	if err != nil {
-		return r.Spec.Size
+		return fallback
 	}
 	defer conn.Close()
 	if conn.Welcome.Size != nil && conn.Welcome.Size.Validate() == nil {
 		return *conn.Welcome.Size
 	}
-	return r.Spec.Size
+	return fallback
 }
 func (s *Session) run(ctx context.Context, repository *store.JSON, r task.Record, wanted task.Size) {
-	original := actualSize(ctx, repository, r)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	original := actualSize(ctx, repository, r, r.Spec.Size)
 	width, height := dimensions(original)
 	wantedWidth, wantedHeight := dimensions(wanted)
 	wanted = task.Size{Rows: uint16(wantedHeight), Cols: uint16(wantedWidth)}
@@ -228,7 +231,7 @@ func (s *Session) run(ctx context.Context, repository *store.JSON, r task.Record
 	}
 	// Enter directly at the pane size, including with old brokers whose
 	// Welcome cannot report the current size. Never bounce through Spec.Size.
-	conn, err := ipc.ConnectAttachment(ctx, repository.Root(), *r.Runtime, &wanted, protocol.AttachExclusive)
+	conn, err := ipc.ConnectMonitor(ctx, repository.Root(), *r.Runtime, &wanted)
 	if err != nil {
 		if ctx.Err() == nil {
 			s.publish(e, err, false)
@@ -240,39 +243,67 @@ func (s *Session) run(ctx context.Context, repository *store.JSON, r task.Record
 	close(s.connected)
 	s.mu.Unlock()
 	defer func() { s.mu.Lock(); s.connection = nil; s.mu.Unlock() }()
-	type result struct {
-		err   error
-		ended bool
-	}
-	readDone := make(chan result, 1)
+
+	frames := make(chan terminal.Incoming, 64)
+	readerDone := make(chan struct{})
 	go func() {
+		defer close(readerDone)
+		defer close(frames)
 		for {
 			frame, err := protocol.Read(conn.Conn)
-			if err != nil {
-				readDone <- result{err: err}
+			select {
+			case frames <- terminal.Incoming{Frame: frame, Err: err}:
+			case <-ctx.Done():
 				return
 			}
-			switch frame.Kind {
-			case protocol.Exit:
-				readDone <- result{ended: true}
-				return
-			case protocol.Error:
-				readDone <- result{err: ipc.FrameError(frame)}
+			if err != nil {
 				return
 			}
 		}
 	}()
 	readerFinished := false
 	defer func() {
-		if !readerFinished {
-			// Detach is acknowledged by EOF only after the broker releases the lease.
-			// This lets Enter move from monitor to ordinary attach without a busy race.
-			_ = conn.Send(protocol.Frame{Kind: protocol.Detach})
-			_ = conn.Conn.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
-			<-readDone
-		}
+		_ = conn.Send(protocol.Frame{Kind: protocol.Detach})
+		cancel()
 		_ = conn.Close()
+		<-readerDone
 	}()
+	owner := conn.Welcome.AttachMode == "" || conn.Welcome.SizeOwner
+	// A revocation notice can race a failed resize/write. Preserve the broker's
+	// reason rather than hiding a deliberate takeover behind a broken-pipe error.
+	send := func(frame protocol.Frame) error {
+		cause := conn.Send(frame)
+		if cause == nil {
+			return nil
+		}
+		timer := time.NewTimer(100 * time.Millisecond)
+		defer timer.Stop()
+		for {
+			select {
+			case next, ok := <-frames:
+				if !ok {
+					return cause
+				}
+				if next.Frame.Kind == protocol.Error {
+					return ipc.FrameError(next.Frame)
+				}
+				if next.Err != nil {
+					return cause
+				}
+			case <-timer.C:
+				return cause
+			case <-ctx.Done():
+				return cause
+			}
+		}
+	}
+	sourceSize := wanted
+	if conn.Welcome.Size != nil {
+		sourceSize = *conn.Welcome.Size
+	}
+	sizeNotices := false
+	lastProbe := time.Now()
+	var pending []terminal.Incoming
 
 	current, _ := repository.Path(r.Spec.ID, "output.log")
 	previous, _ := repository.Path(r.Spec.ID, "output.log.1")
@@ -315,7 +346,7 @@ func (s *Session) run(ctx context.Context, repository *store.JSON, r task.Record
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 	needsSize := true
-	appliedSize := wanted // The attachment handshake already applied this size.
+	appliedSize := sourceSize // Only the size owner changes the PTY.
 	endSeen := false
 	var missingSince time.Time
 
@@ -323,16 +354,77 @@ func (s *Session) run(ctx context.Context, repository *store.JSON, r task.Record
 		if ctx.Err() != nil {
 			return
 		}
-		select {
-		case result := <-readDone:
-			readerFinished = true
-			if result.err != nil {
-				s.publish(e, result.err, false)
+
+		// One reader owns framing. Role changes and resize notices are consumed even
+		// when output is quiet, so followers never fight the controlling window.
+	drainFrames:
+		for count := 0; count < 128 && !readerFinished; count++ {
+			var next terminal.Incoming
+			if len(pending) > 0 {
+				next, pending = pending[0], pending[1:]
+			} else {
+				select {
+				case value, ok := <-frames:
+					if !ok {
+						s.publish(e, io.ErrUnexpectedEOF, false)
+						return
+					}
+					next = value
+				default:
+					break drainFrames
+				}
+			}
+			if next.Err != nil {
+				s.publish(e, next.Err, false)
 				return
 			}
-			// Final bytes are committed to the log before Exit; drain them below.
-		default:
+			switch next.Frame.Kind {
+			case protocol.Exit:
+				readerFinished = true
+			case protocol.Error:
+				s.publish(e, ipc.FrameError(next.Frame), false)
+				return
+			case protocol.Notice:
+				var notice protocol.NoticeMessage
+				if err := ipc.Decode(next.Frame.Payload, &notice); err != nil {
+					s.publish(e, err, false)
+					return
+				}
+				if notice.Type == "role" {
+					if notice.SizeOwner && !owner {
+						needsSize = true
+					}
+					owner = notice.SizeOwner
+					if notice.Size != nil && notice.Size.Validate() == nil {
+						sourceSize = *notice.Size
+						sizeNotices = true
+						if !owner {
+							needsSize = true
+						}
+					}
+				} else if notice.Type == "refresh" && owner {
+					redraw, err := terminal.Repaint(ctx, send, frames, wanted, 2*time.Second)
+					if err != nil {
+						if ctx.Err() == nil {
+							s.publish(e, err, false)
+						}
+						return
+					}
+					pending = append(pending, redraw...)
+				}
+			}
 		}
+		// Older brokers lack size notices. A follower probes without resizing the
+		// application, and stops probing once the broker advertises live sizes.
+		if !owner && !sizeNotices && time.Since(lastProbe) >= 500*time.Millisecond {
+			lastProbe = time.Now()
+			latest := actualSize(ctx, repository, r, sourceSize)
+			if latest != sourceSize {
+				sourceSize = latest
+				needsSize = true
+			}
+		}
+
 		select {
 		case wanted = <-s.resize:
 			needsSize = true
@@ -341,12 +433,16 @@ func (s *Session) run(ctx context.Context, repository *store.JSON, r task.Record
 		if needsSize {
 			w, h := dimensions(wanted)
 			wanted = task.Size{Rows: uint16(h), Cols: uint16(w)}
-			if wanted != appliedSize {
-				if err := conn.Send(ipc.JSON(protocol.Resize, wanted)); err != nil {
+			if owner && wanted != appliedSize {
+				if err := send(ipc.JSON(protocol.Resize, wanted)); err != nil {
 					s.publish(e, err, false)
 					return
 				}
 				appliedSize = wanted
+				sourceSize = wanted
+			}
+			if !owner {
+				w, h = dimensions(sourceSize)
 			}
 			if e.Width() != w || e.Height() != h {
 				e.Resize(w, h)

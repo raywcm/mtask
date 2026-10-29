@@ -89,8 +89,8 @@ func AttachWithOptions(ctx context.Context, state string, record task.Record, in
 	var sizeOwner atomic.Bool
 	// Older brokers have no size-owner field and retain the exclusive semantics.
 	sizeOwner.Store(session.Welcome.AttachMode == "" || session.Welcome.SizeOwner)
-	if options.Mode != "" && options.Mode != protocol.AttachExclusive {
-		label := locale.Text("mode_" + options.Mode)
+	if session.Welcome.AttachMode != "" && session.Welcome.AttachMode != protocol.AttachExclusive {
+		label := locale.Text("mode_" + session.Welcome.AttachMode)
 		identity = identity.withMode(label, size)
 	}
 	var result AttachResult
@@ -111,13 +111,13 @@ func AttachWithOptions(ctx context.Context, state string, record task.Record, in
 		}
 		events := make(chan event, 2)
 		var wg sync.WaitGroup
-		frames := make(chan incoming, 64)
+		frames := make(chan Incoming, 64)
 		wg.Go(func() {
 			defer close(frames)
 			for {
 				frame, err := protocol.Read(session.Conn)
 				select {
-				case frames <- incoming{frame: frame, err: err}:
+				case frames <- Incoming{Frame: frame, Err: err}:
 				case <-attachCtx.Done():
 					return
 				}
@@ -138,7 +138,7 @@ func AttachWithOptions(ctx context.Context, state string, record task.Record, in
 			return err
 		}
 		titleActive = true
-		var pending []incoming
+		var pending []Incoming
 		if session.Welcome.Replay != "initial" {
 			if err := writeTTY(attachCtx, fd, []byte(restore.prefix())); err != nil {
 				return err
@@ -150,7 +150,7 @@ func AttachWithOptions(ctx context.Context, state string, record task.Record, in
 		if session.Welcome.Replay != "initial" {
 			if restore.fullscreen() && sizeOwner.Load() {
 				var err error
-				pending, err = repaint(attachCtx, session.Send, frames, size, 2*time.Second)
+				pending, err = Repaint(attachCtx, session.Send, frames, size, 2*time.Second)
 				if err != nil {
 					return err
 				}
@@ -197,7 +197,7 @@ func AttachWithOptions(ctx context.Context, state string, record task.Record, in
 		})
 		wg.Go(func() {
 			for {
-				var next incoming
+				var next Incoming
 				if len(pending) > 0 {
 					next, pending = pending[0], pending[1:]
 				} else {
@@ -211,11 +211,11 @@ func AttachWithOptions(ctx context.Context, state string, record task.Record, in
 						next = value
 					}
 				}
-				if next.err != nil {
-					events <- event{err: fmt.Errorf("connection ended; check task status: %w", next.err)}
+				if next.Err != nil {
+					events <- event{err: fmt.Errorf("connection ended; check task status: %w", next.Err)}
 					return
 				}
-				frame := next.frame
+				frame := next.Frame
 				switch frame.Kind {
 				case protocol.Output:
 					if err := writeTTY(attachCtx, fd, frame.Payload); err != nil {
@@ -255,7 +255,7 @@ func AttachWithOptions(ctx context.Context, state string, record task.Record, in
 						}
 					case "refresh":
 						if !readOnly && sizeOwner.Load() && restore.inspect(repository) == nil && restore.fullscreen() {
-							redraw, err := repaint(attachCtx, session.Send, frames, CurrentSize(tty), 2*time.Second)
+							redraw, err := Repaint(attachCtx, session.Send, frames, CurrentSize(tty), 2*time.Second)
 							if err != nil {
 								events <- event{err: err}
 								return

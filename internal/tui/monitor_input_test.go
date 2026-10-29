@@ -96,8 +96,22 @@ func TestMonitorTypeaheadAndFailureRelease(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("monitor command missing")
 	}
-	next, _ := m.Update(cmd()) // The backend reports a connection error.
-	m = next.(model)
+	var apply func(tea.Cmd)
+	apply = func(cmd tea.Cmd) {
+		if cmd == nil {
+			return
+		}
+		msg := cmd()
+		if batch, ok := msg.(tea.BatchMsg); ok {
+			for _, nested := range batch {
+				apply(nested)
+			}
+			return
+		}
+		next, _ := m.Update(msg)
+		m = next.(model)
+	}
+	apply(cmd) // The backend reports a connection error.
 	if route.enabled || len(route.pending) > 0 || m.monitorFrame.Err == nil {
 		t.Fatal("failed monitor retained the keyboard or buffered application input")
 	}
@@ -136,6 +150,31 @@ func TestCtrlEnterIgnoredWithoutLeavingMonitor(t *testing.T) {
 			}
 		}
 		m.closeMonitor()
+	}
+}
+
+func TestControlArrowsAreApplicationKeys(t *testing.T) {
+	for raw, want := range map[string]string{
+		"\x1b[1;5A": "\x1b[A", "\x1b[1;5B": "\x1b[B",
+		"\x1b[57352;5u": "\x1b[A", "\x1b[57353;5:2u": "\x1b[B",
+		"\x1b[57352;5:3u": "",
+	} {
+		for split := 0; split <= len(raw); split++ {
+			r := &monitorInput{}
+			r.resetLocked()
+			a, first := r.decoder.Feed([]byte(raw[:split]))
+			b, second := r.decoder.Feed([]byte(raw[split:]))
+			if first || second || string(append(a, b...)) != want || len(r.commands) != 0 {
+				t.Fatalf("%q split %d did not become application arrow", raw, split)
+			}
+		}
+	}
+	r := &monitorInput{}
+	r.resetLocked()
+	paste := "\x1b[200~\x1b[1;5A\x1b[201~"
+	out, handled := r.decoder.Feed([]byte(paste))
+	if handled || string(out) != paste {
+		t.Fatal("paste content was transformed")
 	}
 }
 

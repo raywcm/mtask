@@ -434,6 +434,10 @@ func (s *server) serve(conn *net.UnixConn) {
 						return
 					}
 				case notice := <-sub.Notices:
+					s.attachMu.Lock()
+					size := s.size
+					s.attachMu.Unlock()
+					notice.Size = &size
 					if wire.Send(ipc.JSON(protocol.Notice, notice)) != nil {
 						return
 					}
@@ -441,13 +445,23 @@ func (s *server) serve(conn *net.UnixConn) {
 			}
 		}()
 		defer func() { s.detach(sub); conn.Close(); <-outputDone }()
-		if !s.hub.RequestRefresh(sub) {
+		if !hello.Preview && !s.hub.RequestRefresh(sub) {
 			if redraw, ok := s.process.(interface{ Redraw() error }); ok {
 				_ = redraw.Redraw()
 			}
 		}
 	} else {
 		_ = conn.SetReadDeadline(time.Now().Add(30 * time.Second))
+	}
+	denied := func(code, message string) {
+		// A resize/input can arrive just after takeover revoked this lease.
+		// Let its output worker send the revocation before closing the socket.
+		select {
+		case <-sub.Done:
+			<-outputDone
+		default:
+			reject(code, errors.New(message))
+		}
 	}
 	for {
 		frame, err := protocol.Read(conn)
@@ -474,7 +488,7 @@ func (s *server) serve(conn *net.UnixConn) {
 			}
 			s.attachMu.Unlock()
 			if !allowed {
-				reject("read_only", errors.New("connection has no input control"))
+				denied("read_only", "connection has no input control")
 				return
 			}
 			if err != nil {
@@ -492,11 +506,12 @@ func (s *server) serve(conn *net.UnixConn) {
 				err = s.process.Resize(size)
 				if err == nil {
 					s.size = size
+					s.hub.NotifySize()
 				}
 			}
 			s.attachMu.Unlock()
 			if !allowed {
-				reject("read_only", errors.New("read-only connections cannot resize"))
+				denied("read_only", "read-only connections cannot resize")
 				return
 			}
 			if err != nil {
@@ -520,7 +535,7 @@ func (s *server) serve(conn *net.UnixConn) {
 				}
 				s.attachMu.Unlock()
 				if !allowed {
-					reject("read_only", errors.New("read-only connections cannot stop the task"))
+					denied("read_only", "read-only connections cannot stop the task")
 					return
 				}
 			}

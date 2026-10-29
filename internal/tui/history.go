@@ -124,12 +124,5 @@ func (m model) historyView(width int) []string {
 	if len(m.history.lines) > 0 {
 		position = fmt.Sprintf("%d–%d / %d", y+1, min(y+height, len(m.history.lines)), len(m.history.lines))
 	}
-	hint := t("history_hint")
-	if ansi.StringWidth(hint) > width {
-		hint = "↑/↓ PgUp/PgDn ←/→ Home/End Esc/q"
-	}
-	if ansi.StringWidth(hint) > width {
-		hint = "↑/↓ Esc/q"
-	}
-	return append(lines, p.muted.Render(position), p.muted.Render(ansi.Truncate(hint, width, "…")))
+	return append(lines, p.muted.Render(position), "")
 }

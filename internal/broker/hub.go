@@ -3,7 +3,6 @@ package broker
 
 import (
 	"errors"
-	"io"
 	"sync"
 
 	"github.com/raywcm/taskdock/internal/protocol"
@@ -105,10 +104,7 @@ func (h *Hub) RequestRefresh(s *Subscription) bool {
 	if h.owner == nil || h.owner == s || !h.owner.modern {
 		return false
 	}
-	select {
-	case h.owner.notices <- protocol.NoticeMessage{Type: "refresh"}:
-	default:
-	}
+	h.notice(h.owner, protocol.NoticeMessage{Type: "refresh"})
 	return true
 }
 func (h *Hub) Detach(s *Subscription) {
@@ -118,6 +114,14 @@ func (h *Hub) Detach(s *Subscription) {
 		h.disconnect(s, "", "")
 		h.notifyRoles()
 	}
+}
+
+// NotifySize sends the existing role notice with the broker's current size.
+// Older clients ignore the additional size field.
+func (h *Hub) NotifySize() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.notifyRoles()
 }
 
 // Output stays opaque. A slow subscriber alone is disconnected; other clients
@@ -190,38 +194,33 @@ func (h *Hub) disconnect(s *Subscription, code, message string) {
 	}
 }
 func (h *Hub) notifyRoles() {
-	// A blocked notice consumer is a slow client too. Repeat after removal so
-	// every remaining client receives the final size owner, including promotion.
-	for {
-		changed := false
-		for s := range h.members {
-			if !s.modern {
-				continue
-			}
-			select {
-			case s.notices <- protocol.NoticeMessage{Type: "role", SizeOwner: h.owner == s}:
-			default:
-				h.disconnect(s, "slow_client", "notification queue overflow")
-				changed = true
-			}
-		}
-		if !changed {
-			return
+	for s := range h.members {
+		if s.modern {
+			h.notice(s, protocol.NoticeMessage{Type: "role", SizeOwner: h.owner == s})
 		}
 	}
 }
-func Pump(r io.Reader, h *Hub) error {
-	buf := make([]byte, OutputChunkSize)
+
+// Roles are snapshots, unlike output bytes. Coalesce superseded notices during
+// bursts of joins/resizes instead of evicting a healthy controller. Retain one
+// refresh request so a native viewer still receives a complete redraw.
+func (h *Hub) notice(s *Subscription, notice protocol.NoticeMessage) {
+	select {
+	case s.notices <- notice:
+		return
+	default:
+	}
+	refresh := notice.Type == "refresh"
 	for {
-		n, err := r.Read(buf)
-		if n > 0 {
-			h.Publish(buf[:n])
-		}
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				return nil
+		select {
+		case previous := <-s.notices:
+			refresh = refresh || previous.Type == "refresh"
+		default:
+			s.notices <- protocol.NoticeMessage{Type: "role", SizeOwner: h.owner == s}
+			if refresh {
+				s.notices <- protocol.NoticeMessage{Type: "refresh"}
 			}
-			return err
+			return
 		}
 	}
 }

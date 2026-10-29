@@ -37,13 +37,11 @@ func TestDisconnectAndReattach(t *testing.T) {
 	}
 }
 
-func TestSlowClientDoesNotBlockPump(t *testing.T) {
+func TestSlowClientDoesNotBlockPublish(t *testing.T) {
 	var hub Hub
 	sub, _ := hub.Attach()
 	data := bytes.Repeat([]byte{'x'}, OutputChunkSize*(OutputQueueDepth+2))
-	if err := Pump(bytes.NewReader(data), &hub); err != nil {
-		t.Fatal(err)
-	}
+	hub.Publish(data)
 	select {
 	case <-sub.Done:
 	default:
@@ -190,5 +188,31 @@ func TestConcurrentTakeoverPublishAndStaleInputChecks(t *testing.T) {
 		})
 	}
 	wg.Wait()
+	h.Close()
+}
+
+func TestJoinAndResizeBurstsDoNotEvictControllers(t *testing.T) {
+	var h Hub
+	var members []*Subscription
+	for range 24 {
+		s, err := h.AttachMode(protocol.AttachShared, true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		members = append(members, s)
+	}
+	for range 100 {
+		h.NotifySize()
+		h.RequestRefresh(members[1])
+	}
+	for i, s := range members {
+		if !h.CanInput(s) || h.OwnsSize(s) != (i == 0) {
+			t.Fatal("notice burst displaced a healthy writer")
+		}
+	}
+	h.Detach(members[0])
+	if !h.OwnsSize(members[1]) {
+		t.Fatal("burst broke ownership promotion")
+	}
 	h.Close()
 }

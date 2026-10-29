@@ -13,6 +13,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/raywcm/taskdock/internal/config"
 	"github.com/raywcm/taskdock/internal/i18n"
+	"github.com/raywcm/taskdock/internal/ipc"
 	"github.com/raywcm/taskdock/internal/monitor"
 	"github.com/raywcm/taskdock/internal/protocol"
 	"github.com/raywcm/taskdock/internal/service"
@@ -41,6 +42,7 @@ type Backend interface {
 	NameSuggestion(context.Context, string, task.ID) (string, error)
 	Monitor(context.Context, task.ID, task.Size) (*monitor.Session, error)
 	Logs(context.Context, string, bool, int) ([]byte, error)
+	Move(context.Context, task.ID, int) error
 }
 type State struct {
 	Tab      string
@@ -143,7 +145,7 @@ func newModel(ctx context.Context, catalog Backend, notice error, options Option
 		m.mode = "connect"
 		m.target = options.Conflict.ID
 		m.targetName = options.Conflict.Name
-		m.connectChoice = 1
+		m.connectChoice = 2
 		m.err = nil
 		m.message = m.locale().Text("busy_hint")
 	}
@@ -262,6 +264,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// diffing. Invalidate once at this boundary; ordinary monitor frames still
 	// use incremental rendering. Never queue a repaint when leaving for attach.
 	repaint := m.repaintPending && !updated.busy
+	if m.monitoring != updated.monitoring || ((m.monitoring || updated.monitoring) && m.mode != updated.mode) {
+		repaint = true
+	}
 	if updated.selected.Kind == "" && m.mode != updated.mode && (m.hasDialog() || updated.hasDialog()) {
 		if updated.busy {
 			updated.repaintPending = true
@@ -363,6 +368,13 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.monitorSession != nil {
 			m.monitorFrame = m.monitorSession.Snapshot()
+			var remote *ipc.RemoteError
+			if errors.As(m.monitorFrame.Err, &remote) && remote.Code == "taken_over" {
+				m.monitoring = false
+				m.closeMonitor()
+				m.message = m.locale().Text("taken_over")
+				return m, m.startLoad()
+			}
 			if m.monitorFrame.Err != nil && m.monitorInput != nil {
 				m.monitorInput.Disable()
 			}
@@ -439,12 +451,17 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, tea.Batch(cmd, tickCmd())
 	case tea.WindowSizeMsg:
+		changed := m.width != msg.Width || m.height != msg.Height
 		m.width, m.height = max(1, msg.Width), max(1, msg.Height)
 		m.input.SetWidth(max(4, min(68, m.width-6)-9))
 		if m.monitorSession != nil {
 			m.monitorSession.Resize(m.monitorSize())
 		}
-		return m, m.syncMonitor()
+		cmd := m.syncMonitor()
+		if changed {
+			cmd = tea.Batch(cmd, tea.ClearScreen)
+		}
+		return m, cmd
 	case tea.PasteMsg:
 		if m.monitoring && m.mode == "" && m.monitorInput != nil && m.monitorFrame.Err == nil {
 			m.monitorInput.forward([]byte("\x1b[200~" + msg.Content + "\x1b[201~"))
@@ -591,6 +608,19 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		} else {
 			switch k {
+			case "shift+up", "shift+down":
+				if m.busy || m.monitoring {
+					return m, nil
+				}
+				if r, ok := m.current(); ok {
+					direction := 1
+					if k == "shift+up" {
+						direction = -1
+					}
+					m.busy = true
+					m.initial = r.Spec.ID
+					return m, func() tea.Msg { return changed{m.catalog.Move(m.ctx, r.Spec.ID, direction)} }
+				}
 			case "v":
 				if m.tab == tabRunning {
 					m.monitoring = !m.monitoring
@@ -697,7 +727,7 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return m, nil
 					}
 					m.mode = "connect"
-					m.connectChoice = 1
+					m.connectChoice = 2
 					return m, nil
 				}
 				if k == "e" || k == "f2" {

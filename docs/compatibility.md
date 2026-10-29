@@ -64,3 +64,18 @@ startup check, so its visible startup still needs testing.
 
 See [testing](stability.md) for reproduction commands and [usage](usage.md) for
 configuration and recovery procedures.
+
+## Coding agents
+
+Codex, Claude Code and OpenCode launch as ordinary terminal commands. No
+agent-specific integration is required. Native attach forwards their output and
+input; monitor control uses a separate screen renderer.
+
+The current demo was recorded on macOS arm64 with three Codex CLI 0.165.0
+sessions and two OpenCode 1.18.30 sessions, alongside htop, shells and servers. Startup, typing in the prompt and detach/reconnect are checked without
+submitting a model request. Claude Code was not installed in this environment;
+its full workflow has not been tested here.
+
+A shared native terminal has one PTY size. Use monitor panes for differently
+sized windows; followers crop the owner’s screen without resizing the program.
+The OS or terminal must pass Ctrl+Up/Down through for those monitor bindings.

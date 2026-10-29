@@ -161,10 +161,16 @@ func Connect(ctx context.Context, state string, r task.Runtime, mode string, siz
 // Older v1 brokers ignore unknown JSON fields; sending readonly blindly would
 // therefore accidentally grant input control, and takeover could be ignored.
 func ConnectAttachment(ctx context.Context, state string, r task.Runtime, size *task.Size, mode string) (*Session, error) {
-	if mode == "" {
-		mode = protocol.AttachExclusive
-	}
-	if !protocol.ValidAttachMode(mode) {
+	return connectAttachment(ctx, state, r, size, mode, false)
+}
+
+func ConnectMonitor(ctx context.Context, state string, r task.Runtime, size *task.Size) (*Session, error) {
+	return connectAttachment(ctx, state, r, size, "", true)
+}
+
+func connectAttachment(ctx context.Context, state string, r task.Runtime, size *task.Size, mode string, preview bool) (*Session, error) {
+	automatic := mode == ""
+	if !automatic && !protocol.ValidAttachMode(mode) {
 		return nil, errors.New("invalid attachment mode")
 	}
 	if mode != protocol.AttachExclusive {
@@ -174,11 +180,16 @@ func ConnectAttachment(ctx context.Context, state string, r task.Runtime, size *
 		}
 		supported := slices.Contains(probe.Welcome.Capabilities, protocol.AttachModesCapability)
 		_ = probe.Close()
-		if !supported {
+		if automatic {
+			mode = protocol.AttachExclusive
+			if supported {
+				mode = protocol.AttachShared
+			}
+		} else if !supported {
 			return nil, &RemoteError{Code: "unsupported_attach_mode", Message: "this broker predates connection modes; existing tasks keep running, new tasks support the new modes"}
 		}
 	}
-	s, err := connect(ctx, state, r, "attach", size, mode)
+	s, err := connect(ctx, state, r, "attach", size, mode, preview)
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +200,7 @@ func ConnectAttachment(ctx context.Context, state string, r task.Runtime, size *
 	return s, nil
 }
 
-func connect(ctx context.Context, state string, r task.Runtime, mode string, size *task.Size, attachMode string) (*Session, error) {
+func connect(ctx context.Context, state string, r task.Runtime, mode string, size *task.Size, attachMode string, preview ...bool) (*Session, error) {
 	name, err := SocketPath(state, r.TaskID)
 	if err != nil {
 		return nil, err
@@ -208,6 +219,7 @@ func connect(ctx context.Context, state string, r task.Runtime, mode string, siz
 	_ = u.SetDeadline(time.Now().Add(Timeout))
 	s := &Session{Conn: u, Encoder: protocol.NewEncoder(u)}
 	hello := protocol.HelloMessage{TaskID: r.TaskID, InstanceID: r.InstanceID, Mode: mode, Size: size}
+	hello.Preview = len(preview) > 0 && preview[0]
 	if mode == "attach" && attachMode != "" {
 		hello.AttachMode = attachMode
 		hello.Capabilities = []string{protocol.AttachModesCapability}

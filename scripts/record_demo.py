@@ -66,7 +66,7 @@ def main():
     columns, rows = 100, 24
     frames, durations, events, chapters = [], [], [], []
     native_colors = {'#909bae', '#161d28'}
-    with tempfile.TemporaryDirectory(prefix='tdock-demo-') as root:
+    with tempfile.TemporaryDirectory(prefix='tdock-demo-', dir='/tmp') as root:
         ENV['HOME'] = root
         ENV.pop('ENV', None)
         h = Harness(root, pathlib.Path(args.binary).resolve())
@@ -98,6 +98,23 @@ def main():
                 create(last_session,htop,'--readonly','--pid',pids,'--delay','10')
             else:
                 create(last_session,'/usr/bin/env','PS1=scratch-shell$ ','/bin/sh','-i')
+            agents = []
+            real_home = previous_env.get('HOME', str(pathlib.Path.home()))
+            for app, session_name in [('codex','codex-review'),('codex','codex-tests'),('codex','codex-docs'),('opencode','opencode-api'),('opencode','opencode-ui')]:
+                executable = shutil.which(app)
+                if not executable:
+                    continue
+                environment = ['HOME='+real_home,
+                    'XDG_CONFIG_HOME='+previous_env.get('XDG_CONFIG_HOME', real_home+'/.config'),
+                    'XDG_DATA_HOME='+previous_env.get('XDG_DATA_HOME', real_home+'/.local/share'),
+                    'XDG_STATE_HOME='+previous_env.get('XDG_STATE_HOME', real_home+'/.local/state')]
+                command = [executable]
+                if app == 'codex':
+                    environment += ['CODEX_HOME='+previous_env.get('CODEX_HOME', real_home+'/.codex')]
+                    command += ['--no-daemon', '--sandbox', 'read-only', '-C', str(project)]
+                else:
+                    command += [str(project)]
+                agents.append((app, session_name, create(session_name, '/usr/bin/env', *environment, '/usr/bin/nice', '-n', '10', *command)))
             for name,command in [
                 ('git-status',['git','status','--short']),
                 ('readme-lines',['/usr/bin/wc','-l','README.md']),
@@ -105,7 +122,7 @@ def main():
             ]:
                 h.finished(create(name,*command))
             before={r['spec']['id']:r['runtime'] for r in json.loads(h.cli('ls','--json').stdout) if r['runtime']['state']=='running'}
-            assert len(before)==8
+            assert len(before)==8+len(agents)
             terminal = Terminal(columns, rows); start=time.monotonic(); original=terminal.feed
             def feed(data):
                 if data:
@@ -122,22 +139,59 @@ def main():
                     terminal.feed(drain(fd,.20))
                     frames.append(image(terminal,caption,font,bold,native_colors));durations.append(250)
                     time.sleep(max(0,.25-(time.monotonic()-tick)))
-            wait_view(fd,terminal,lambda text:last_session in text and 'Running 8' in text and 'Stop 3' in text and '0.0%' in text)
+            wait_view(fd,terminal,lambda text:last_session in text and ('Running '+str(8+len(agents))) in text and 'Stop 3' in text and '0.0%' in text)
             colors={terminal.current.buffer[y][x].fg for y in range(rows) for x in range(columns)}
             assert '70e1c8' in colors, 'the application did not emit its normal accent color'
-            scene('Task list · 8 running sessions',3)
+            scene('Task list · shells, servers, editors and coding agents',2)
+            os.write(fd,b'\x1b[1;2B'); time.sleep(.15)
+            scene('Shift+Up / Down · arrange the task list',1.5)
+            os.write(fd,b'\x1b[1;2A')
+            wait_view(fd,terminal,lambda text:'dev-shell' in terminal.display[5] and 'Working' not in text)
+            def selected(name):
+                for y,row in enumerate(terminal.display):
+                    if name in row and terminal.current.buffer[y][row.index(name)].reverse:
+                        return True
+                return False
+            for index,(app,session_name,ref) in enumerate(agents):
+                os.write(fd,b'\x06'+session_name.encode()+b'\r')
+                if app=='codex':
+                    wait_view(fd,terminal,lambda text:'Trust this folder?' in text or 'Ask Codex' in text,timeout=30)
+                    if 'Trust this folder?' in '\n'.join(terminal.display):os.write(fd,b'\r')
+                    wait_view(fd,terminal,lambda text:'Ask Codex' in text,timeout=30)
+                    os.write(fd,b'Review this project')
+                    wait_view(fd,terminal,lambda text:'Review this project' in text)
+                else:
+                    wait_view(fd,terminal,lambda text:'ctrl+p' in text,timeout=30)
+                    terminal.feed(drain(fd,2))
+                    if 'Update Available' in '\n'.join(terminal.display):
+                        os.write(fd,b'\x1b')
+                        wait_view(fd,terminal,lambda text:'Update Available' not in text)
+                    os.write(fd,b'Explain this project')
+                    wait_view(fd,terminal,lambda text:'Explain this project' in text)
+                scene(('Codex' if app=='codex' else 'OpenCode')+' · '+session_name,2.5)
+                draft = 'Review this project' if app=='codex' else 'Explain this project'
+                os.write(fd,b'\x1b[24~')
+                wait_view(fd,terminal,lambda text:terminal.alternate and 'Memory' in text and selected(session_name))
+                os.write(fd,b'\r')
+                wait_view(fd,terminal,lambda text:draft in text,timeout=15)
+                assert h.show(ref)['runtime']['child_pid']==before[ref]['child_pid']
+                scene(session_name+' · reconnect to the same prompt',1.5)
+                os.write(fd,b'\x1b[24~')
+                wait_view(fd,terminal,lambda text:terminal.alternate and 'Memory' in text and selected(session_name))
+                os.write(fd,b'\x1b[H')
+                wait_view(fd,terminal,lambda text:selected('dev-shell'))
             os.write(fd,b'\r');wait_view(fd,terminal,lambda text:not terminal.alternate and 'tdock$' in text)
             ls = 'ls -G' if sys.platform=='darwin' else 'ls --color=auto'
             os.write(fd,(ls+'\r').encode())
             wait_view(fd,terminal,lambda text:'examples' in text and 'README.md' in text)
             scene('Enter · open dev-shell',3)
-            os.write(fd,b'\x1b[24~');wait_view(fd,terminal,lambda text:terminal.alternate and 'Running 8' in text and last_session in text)
+            os.write(fd,b'\x1b[24~');wait_view(fd,terminal,lambda text:terminal.alternate and ('Running '+str(8+len(agents))) in text and last_session in text)
             scene('F12 · return to the task list',2)
             if htop:
                 os.write(fd,b'\x1b[B'*7+b'\r')
-                wait_view(fd,terminal,lambda text:'PID' in text and 'Command' in text and 'Running 8' not in text)
+                wait_view(fd,terminal,lambda text:'PID' in text and 'Command' in text and ('Running '+str(8+len(agents))) not in text)
                 scene('Enter · run htop in its own terminal',3)
-                os.write(fd,b'\x1b[24~');wait_view(fd,terminal,lambda text:'Running 8' in text and 'Memory' in text)
+                os.write(fd,b'\x1b[24~');wait_view(fd,terminal,lambda text:('Running '+str(8+len(agents))) in text and 'Memory' in text)
                 os.write(fd,b'\x1b[A'*7)
             os.write(fd,b'v');wait_view(fd,terminal,lambda text:'README.md' in text and 'Control' in text)
             os.write(fd,b"printf 'Input works inside the monitor\\n'\r")
@@ -153,18 +207,20 @@ def main():
             os.write(fd,b"printf 'Shell PID: %s\\n' \"$$\"\r")
             wait_view(fd,terminal,lambda text:('Shell PID: '+str(before[dev]['child_pid'])) in text)
             scene('Enter · reconnect to the same process',2.5)
-            os.write(fd,b'\x02d');wait_view(fd,terminal,lambda text:terminal.alternate and 'Running 8' in text and 'Memory' in text)
+            os.write(fd,b'\x02d');wait_view(fd,terminal,lambda text:terminal.alternate and ('Running '+str(8+len(agents))) in text and 'Memory' in text)
             scene('Ctrl+B then d · return to the list',2)
             os.write(fd,b's');wait_view(fd,terminal,lambda text:'Stop this session' in text)
             scene('s · review the stop confirmation',2.5)
-            os.write(fd,b'y');h.finished(dev);os.write(fd,b'\t')
+            os.write(fd,b'y');h.finished(dev)
+            wait_view(fd,terminal,lambda text:('Running '+str(7+len(agents))) in text and 'Stop 4' in text and 'Working' not in text)
+            os.write(fd,b'\t')
             wait_view(fd,terminal,lambda text:'Stop 4' in text and 'Duration' in text and 'dev-shell' in text)
             os.write(fd,b'\x1b[A'*4)
             scene('Stop · finished sessions and retained output',2)
             os.write(fd,b'\r');wait_view(fd,terminal,lambda text:'Output history' in text and 'Shell PID:' in text)
             scene('Enter · inspect session history',2.5)
             os.write(fd,b'\x1b');wait_view(fd,terminal,lambda text:'Output history' not in text and 'Duration' in text)
-            os.write(fd,b'\x1b[Z');wait_view(fd,terminal,lambda text:'Running 7' in text and 'Memory' in text)
+            os.write(fd,b'\x1b[Z');wait_view(fd,terminal,lambda text:('Running '+str(7+len(agents))) in text and 'Memory' in text)
             scene('Running · the other sessions keep working',3)
             for ref,runtime in before.items():
                 if ref!=dev:
@@ -172,6 +228,9 @@ def main():
                     assert after['health']=='online'
                     assert after['runtime']['child_pid']==runtime['child_pid']
             os.write(fd,b'q');assert h.join(pid)==0
+        except BaseException:
+            pathlib.Path('/tmp/tdock-demo-failed.json').write_text(json.dumps(events,ensure_ascii=False))
+            raise
         finally:
             h.cleanup()
             ENV.clear(); ENV.update(previous_env)
@@ -194,10 +253,11 @@ def main():
     (destination/'demo.cast').write_text('\n'.join(json.dumps(x,ensure_ascii=False) for x in [header,*events])+'\n')
     preview=pathlib.Path(tempfile.gettempdir())/'tdock-demo-preview.png'
     contact=Image.new('RGB',(1032*2,616*3),'#161d28')
-    selections=[0,3,4,6,9,11] if htop else [0,1,3,5,8,10]
+    wanted=['Task list','Codex · codex-review','OpenCode · opencode-api','Enter · run htop','v · type','s · review']
+    selections=[next((i for i,c in enumerate(chapters) if c['caption'].startswith(name)),0) for name in wanted]
     for i,index in enumerate(selections):contact.paste(frames[chapters[index]['frame']],((i%2)*1032,(i//2)*616))
     contact.save(preview)
-    print('PASS recorded 8 real running sessions and 3 historical tasks in English; native terminal colors preserved')
+    print('PASS recorded real shells/servers/htop and installed agents '+', '.join(name for app,name,_ in agents)+'; native attach/detach, stable PIDs and English colors; no agent prompt submitted')
     print('Preview: '+str(preview))
 
 

@@ -40,7 +40,7 @@ func (m model) header(width int) string {
 	p := m.palette()
 	brand := p.accent.Bold(true).Render("TaskDock")
 	brandWidth := ansi.StringWidth(brand) + 2
-	if width <= brandWidth || m.tab == tabSettings || m.mode != "" || m.monitoring {
+	if width <= brandWidth {
 		return ansi.Truncate(brand, width, "…")
 	}
 	return brand + "  " + m.helpLine(width-brandWidth)
@@ -128,11 +128,40 @@ func (m model) card(r task.Record, width int, selected bool) string {
 }
 func (m model) helpLine(width int) string {
 	t, p := m.locale().Text, m.palette()
+	hint, compact := "", ""
+	switch {
+	case m.mode == "search":
+		hint, compact = t("search_hint"), "↑↓ Enter Esc"
+	case m.mode == "history":
+		hint, compact = t("history_hint"), "↑↓ PgUp/PgDn Esc"
+	case m.mode == "connect" || m.mode == "takeover":
+		hint, compact = t("connection_hint"), "↑↓ Enter Esc"
+	case m.hasDialog():
+		hint, compact = t("confirm_hint"), "Enter Esc"
+	case m.mode == "new" || m.mode == "rename":
+		hint, compact = t("edit_hint"), "Enter Esc"
+	case m.tab == tabSettings:
+		hint, compact = t("settings_tab_hint"), "←→ Enter Esc"
+		if m.settingsEditing {
+			hint, compact = t("settings_hint"), "↑↓ ←→ Enter Esc"
+		}
+	case m.monitoring:
+		hint, compact = t("monitor_hint"), "↑↓ Ctrl+↑↓ Esc/F12 Ctrl+F"
+		if m.monitorFrame.Err != nil {
+			hint, compact = t("monitor_retry_hint"), "↑↓ F5 Esc/F12"
+		}
+	}
+	if hint != "" {
+		if ansi.StringWidth(hint) <= width {
+			return p.muted.Render(hint)
+		}
+		return p.muted.Render(ansi.Truncate(compact, width, "…"))
+	}
 	enterLabel := t("attach")
 	if m.tab == tabStop {
 		enterLabel = t("view_history")
 	}
-	bindings := [][2]string{{"←→", t("tabs_short")}, {"↑↓", t("select")}, {"Enter", enterLabel}, {"n", t("new")}, {"Ctrl+F", t("search_sessions")}, {"F12/Ctrl+B,d", t("detach_short")}, {"?", t("help")}, {"q", t("quit")}}
+	bindings := [][2]string{{"←→", t("tabs_short")}, {"↑↓", t("select")}, {"Enter", enterLabel}, {"v", t("monitor")}, {"n", t("new")}, {"Ctrl+F", t("search_sessions")}, {"?", t("help")}, {"q", t("quit")}}
 	items := []string{}
 	for _, binding := range bindings {
 		items = append(items, p.accent.Render(binding[0])+" "+p.muted.Render(binding[1]))
@@ -141,9 +170,7 @@ func (m model) helpLine(width int) string {
 	if ansi.StringWidth(line) <= width {
 		return line
 	}
-	// Keep the two detach shortcuts visible on narrower terminals. The full
-	// action list remains available through F1/?.
-	for _, compact := range []string{"←→ ↑↓ Enter n Ctrl+F F12/Ctrl+B,d ↩ ? q", "F12/Ctrl+B,d ↩ ? q"} {
+	for _, compact := range []string{"←→ ↑↓ Enter v n Ctrl+F ? q", "Enter v Ctrl+F ? q", "v ? q"} {
 		if ansi.StringWidth(compact) <= width {
 			return p.muted.Render(compact)
 		}
@@ -243,11 +270,7 @@ func (m model) settingsView(width int) []string {
 		}
 		lines = append(lines, line)
 	}
-	hint := t("settings_tab_hint")
-	if m.settingsEditing {
-		hint = t("settings_hint")
-	}
-	lines = append(lines, m.status(width), hint)
+	lines = append(lines, m.status(width))
 	return lines
 }
 func (m model) helpView(width int) []string {
@@ -264,6 +287,7 @@ func (m model) helpView(width int) []string {
 	lines := []string{m.header(width), "", p.accent.Bold(true).Render(t("keyboard_help")), p.muted.Render(strings.Repeat("─", width))}
 	bindings := [][2]string{
 		{"↑ / ↓ · j / k", t("select")},
+		{"Shift+↑ / Shift+↓", t("move_session")},
 		{tabKeys, t("tabs")},
 		{"Enter", enterAction},
 		{"v", t("monitor")},
@@ -300,7 +324,7 @@ func (m model) connectionView(width int) []string {
 		}
 		lines = append(lines, line)
 	}
-	return append(lines, "", m.status(width), t("connection_hint"))
+	return append(lines, "", m.status(width))
 }
 
 func (m model) View() tea.View {
@@ -399,7 +423,9 @@ func (m model) View() tea.View {
 	view.AltScreen = true
 	if m.monitoring && m.mode == "" && m.monitorFrame.Ready && m.monitorFrame.Err == nil && !m.monitorFrame.CursorHidden {
 		left, right, height := m.monitorGeometry()
-		view.Cursor = tea.NewCursor(left+5+min(right-1, max(0, m.monitorFrame.CursorX)), 5+min(height-1, max(0, m.monitorFrame.CursorY)))
+		if m.monitorFrame.CursorX < right && m.monitorFrame.CursorY < height {
+			view.Cursor = tea.NewCursor(left+5+max(0, m.monitorFrame.CursorX), 5+max(0, m.monitorFrame.CursorY))
+		}
 	}
 	return view
 }

@@ -91,14 +91,14 @@ navigate; Esc/q returns. Viewing history does not restart the task.
 ## Multiple clients
 
 ```sh
-tdock attach work                # Exclusive; returns busy if occupied
+tdock attach work                # Automatically join shared control
 tdock attach work --read-only    # No application input or resize
 tdock attach work --shared       # All controllers may type
 tdock attach work --takeover     # Disconnect existing controllers; keep readers
 ```
 
 The flags are mutually exclusive and require v0.3.0+ brokers. The TUI's `c` menu
-provides the same modes, with read-only selected by default. Takeover requires
+provides the same modes, with shared control selected by default. Takeover requires
 confirmation in the TUI; the CLI flag acts immediately.
 
 The oldest connected controller owns the PTY size; ownership transfers on
@@ -110,15 +110,18 @@ Unix UID. Older brokers retain ordinary exclusive attach.
 
 In the TUI, new sessions open selected in the monitor. In the task list, Enter
 opens a session fullscreen; `v` opens the monitor. Ordinary input, Enter, ←/→,
-Ctrl+C/D and pasted text in the monitor go to the application. ↑/↓ switches
+Ctrl+C/D and pasted text in the monitor go to the application. Ctrl+↑/↓ sends
+ordinary application arrow keys. ↑/↓ switches
 sessions; Esc, F12 or Ctrl+B, d returns to the list. To enter a session, return
 to the list first. Ctrl+Enter is ignored throughout the manager and monitor.
 
 The monitor keeps a narrow session list beside a wide control pane. ↑/↓ and Esc
 are manager keys and never reach the application; bracketed paste stays literal.
-The monitor owns an exclusive connection and uses the pane's size. Leaving
-retains that size. Occupied or unavailable tasks display “Unable to monitor”;
-↑/↓ selects another task, F5 retries, and F12/Esc returns to the list. Embedded
+The monitor joins shared control, including when another terminal is attached.
+The oldest controller sets the PTY size; other monitors crop the same screen to
+their panes. When that controller leaves, the next one applies its own size.
+Unavailable tasks display “Unable to monitor”; F5 retries and F12/Esc returns to
+the list. Embedded
 control supports keyboard input; use fullscreen attach for native terminal mouse
 behavior and terminal extensions.
 
@@ -128,7 +131,9 @@ PgUp/PgDn navigate results; Enter confirms and Esc cancels. From the list, a
 running result opens fullscreen; from the monitor, it changes the monitored
 session. Stopped results open retained output. Search input stays out of the application.
 Cancelling resumes the same monitor without resizing. The list scrolls with the
-selection and supports PgUp/PgDn and Home/End.
+selection and supports PgUp/PgDn and Home/End. In the list, Shift+↑/↓ moves the
+selected session within its tab. Order is saved atomically across terminals;
+renames keep position and newly created sessions append.
 
 Settings shows the installed version. Open the editor with Enter or `,`.
 ↑/↓ selects a field, ←/→ changes it, Enter saves, Esc cancels. Tab switches tabs

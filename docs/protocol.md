@@ -35,7 +35,10 @@ are serialized; a partly written frame is not retried.
 ## Modes and compatibility
 
 `mode` is control or attach. Control permits Ping/Stop/Detach and receives no
-application output. Attach requires a size; `attach_mode` defaults to exclusive.
+application output. Attach requires a size; `attach_mode` defaults to exclusive on the wire. New frontends negotiate shared
+control by default, with exclusive fallback for brokers without mode support.
+Preview clients set `preview: true` to avoid a redundant redraw request when
+joining. Role notices may include the current `size`; older clients ignore it.
 Takeover revokes controllers but keeps readers; shared adds a writer; readonly
 rejects Input/Resize/Stop. The oldest connected controller owns the PTY size.
 

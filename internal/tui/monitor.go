@@ -89,7 +89,7 @@ func (m *model) syncMonitor() tea.Cmd {
 func (m model) monitorView(width int) []string {
 	t, p := m.locale().Text, m.palette()
 	if m.width < 50 || m.height < 12 {
-		return []string{m.header(width), t("monitor"), t("small_window"), t("monitor_retry_hint")}
+		return []string{m.header(width), t("monitor"), t("small_window")}
 	}
 	left, right, height := m.monitorGeometry()
 	rows := m.rows(tabRunning)
@@ -143,10 +143,6 @@ func (m model) monitorView(width int) []string {
 		}
 		lines = append(lines, fit(label, left)+" │ "+fit(ansi.Truncate(content, right, ""), right))
 	}
-	hint := t("monitor_hint")
-	if preview.Err != nil || len(rows) == 0 {
-		hint = t("monitor_retry_hint")
-	}
-	lines = append(lines, m.status(width), p.muted.Render(ansi.Truncate(hint, width, "…")))
+	lines = append(lines, m.status(width), "")
 	return lines
 }

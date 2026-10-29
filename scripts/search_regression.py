@@ -5,7 +5,7 @@ import pathlib
 import sys
 import tempfile
 
-from integration import Harness, until
+from integration import ENV, Harness, until
 from monitor_control_regression import FIXTURE, received
 from monitor_dialog_regression import latest_size
 from screen_regression import Terminal
@@ -14,6 +14,11 @@ from ui_regression import wait_view
 
 def main():
     binary = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else 'bin/tdock').resolve()
+    saved_env = dict(ENV)
+    # Exercise the manager with a predictable interactive shell, independent of
+    # host startup files that can discard pre-prompt typeahead.
+    ENV['SHELL'] = '/bin/sh'
+    ENV.pop('ENV', None)
     with tempfile.TemporaryDirectory(prefix='tdock-search-') as root:
         h = Harness(root, binary)
         try:
@@ -34,8 +39,12 @@ def main():
             wait_view(fd, t, lambda s: 'added [' in s and 'Control' in s and 'work-23' in s)
             assert t.alternate, 'new session opened fullscreen instead of the pane'
             created = h.show('added')
+            until(lambda: h.cli('logs','added','--raw').stdout.rstrip().endswith((b'$',b'#')))
             os.write(fd, b"printf 'NEW-PANE-OK\\n'\r")
-            until(lambda: b'NEW-PANE-OK\r\n' in h.cli('logs', 'added', '--raw').stdout)
+            try:
+                until(lambda: b'NEW-PANE-OK\r\n' in h.cli('logs', 'added', '--raw').stdout)
+            except AssertionError:
+                raise AssertionError('new shell output: '+repr(h.cli('logs','added','--raw').stdout[-2000:]))
             # Ctrl+F and the query in one read must never reach the application.
             os.write(fd, b'\x06work-23')
             wait_view(fd, t, lambda s: 'Search sessions' in s and '1 / 1' in s)
@@ -87,6 +96,7 @@ def main():
             print('PASS new selects monitor control, 25-session scrolling, global name/ID/case search, same-read query, no-match/cancel/history, ignored Ctrl+Enter encodings, literal Enter/Shift+Enter/paste, no resize on search cancel and preserved PIDs', flush=True)
         finally:
             h.cleanup()
+            ENV.clear(); ENV.update(saved_env)
 
 
 if __name__ == '__main__':

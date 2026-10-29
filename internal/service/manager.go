@@ -38,6 +38,9 @@ func New(state string) (*Manager, error) {
 }
 
 func (m *Manager) Settings() (config.Settings, error) { return m.Store.Settings() }
+func (m *Manager) Move(ctx context.Context, id task.ID, direction int) error {
+	return m.Store.Move(ctx, id, direction)
+}
 func (m *Manager) SaveSettings(ctx context.Context, settings config.Settings) error {
 	if err := m.Store.SaveSettings(ctx, settings); err != nil {
 		return err

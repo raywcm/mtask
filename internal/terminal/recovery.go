@@ -201,14 +201,14 @@ func (r *recovery) prefix() string {
 	return out.String()
 }
 
-// incoming is read by one continuous frame reader. Recovery never interrupts a
+// Incoming is read by one continuous frame reader. Recovery never interrupts a
 // partially read frame with a socket deadline, which would lose framing.
-type incoming struct {
-	frame protocol.Frame
-	err   error
+type Incoming struct {
+	Frame protocol.Frame
+	Err   error
 }
 
-func repaint(ctx context.Context, send func(protocol.Frame) error, frames <-chan incoming, size task.Size, timeout time.Duration) ([]incoming, error) {
+func Repaint(ctx context.Context, send func(protocol.Frame) error, frames <-chan Incoming, size task.Size, timeout time.Duration) ([]Incoming, error) {
 	// Wait for the application's redraw before restoring the real size. A fixed
 	// sleep can coalesce the two SIGWINCH signals under load, leaving ncurses'
 	// cached screen unchanged. Existing protocol v1 brokers remain compatible.
@@ -223,7 +223,7 @@ func repaint(ctx context.Context, send func(protocol.Frame) error, frames <-chan
 	if err := send(ipc.JSON(protocol.Resize, smaller)); err != nil {
 		return nil, err
 	}
-	var pending []incoming
+	var pending []Incoming
 	var bytes int
 	redrawn := false
 	parser := ansi.NewParser()
@@ -257,12 +257,18 @@ wait:
 				break wait
 			}
 			pending = append(pending, next)
-			bytes += len(next.frame.Payload)
-			if next.err != nil || next.frame.Kind == protocol.Exit || next.frame.Kind == protocol.Error {
-				break wait
+			bytes += len(next.Frame.Payload)
+			if next.Err != nil {
+				return pending, next.Err
 			}
-			if next.frame.Kind == protocol.Output {
-				for _, b := range next.frame.Payload {
+			if next.Frame.Kind == protocol.Error {
+				return pending, ipc.FrameError(next.Frame)
+			}
+			if next.Frame.Kind == protocol.Exit {
+				return pending, nil
+			}
+			if next.Frame.Kind == protocol.Output {
+				for _, b := range next.Frame.Payload {
 					parser.Advance(b)
 				}
 				if redrawn {

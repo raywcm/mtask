@@ -69,9 +69,10 @@ At attach boundaries, known modes are read from bounded logs and the instance's
 `terminal.json`. Full-screen programs receive a temporary one-row resize and a
 redraw wait of up to two seconds. No full screen snapshot or scrollback is kept.
 
-The monitor uses a separate VT fed from retained logs. It acquires an exclusive
-display connection and forwards ordinary keyboard input. ↑/↓ and Esc stay in the
-manager for navigation.
+The monitor uses a separate VT fed from retained logs. It joins a shared
+connection and forwards ordinary keyboard input. Only the first controller
+resizes the PTY; followers track size notices and ownership changes. ↑/↓ and Esc stay in the
+manager for navigation. Ctrl+↑/↓ becomes ordinary application arrows.
 The session list uses a quarter of the width, capped at 28 columns; the control
 pane uses the remaining space.
 Leaving retains that size. Ctrl+F pauses input forwarding for session search;
@@ -86,3 +87,7 @@ The worker is independent of frontend and task lifetimes.
 
 See [protocol](protocol.md), [testing](stability.md) and
 [compatibility](compatibility.md).
+
+Session order is a separate private `order.json`, updated under the catalog
+lock. Moves re-read the current order rather than overwriting another frontend's
+stale list. Runtime metadata and existing brokers are unchanged.

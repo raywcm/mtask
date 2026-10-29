@@ -138,17 +138,17 @@ def test_cli_and_tui(h):
         wait_view(fd,term,lambda text:'ECHO:visible-to-observer' in text)
         assert b'FORBIDDEN' not in h.cli('logs',ref,'--raw').stdout
         os.write(fd,b'\x02d');drain(fd);assert h.join(pid)==0
-        # Busy opens connection choices directly. Enter defaults to read only.
+        # Ordinary Enter joins shared; c exposes explicit read-only/shared/takeover.
         pid,fd=h.spawn_tty();term=Terminal()
         wait_view(fd,term,lambda text:'mode-ui' in text)
-        os.write(fd,b'\r')
-        wait_view(fd,term,lambda text:'Connection modes' in text and 'already has a controller' in text)
-        os.write(fd,b'\r');wait_view(fd,term,lambda text:'Read only' in text and 'Connection modes' not in text)
+        os.write(fd,b'c')
+        wait_view(fd,term,lambda text:'Connection modes' in text)
+        os.write(fd,b'\x1b[A\r');wait_view(fd,term,lambda text:'Read only' in text and 'Connection modes' not in text)
         os.write(fd,b'\x02d');term.feed(wait_output(fd,b'TaskDock'))
         wait_view(fd,term,lambda text:term.alternate and 'mode-ui' in text and 'Memory' in text)
         # Choose shared control and send input from both ends.
         os.write(fd,b'c');wait_view(fd,term,lambda text:'Connection modes' in text)
-        os.write(fd,b'\x1b[B\r');wait_view(fd,term,lambda text:'Shared control' in text and 'Connection modes' not in text)
+        os.write(fd,b'\r');wait_view(fd,term,lambda text:'Shared control' in text and 'Connection modes' not in text)
         os.write(fd,b'from-ui-shared\n');output(owner,b'ECHO:from-ui-shared\n')
         frame(owner,3,b'from-other-controller\n')
         wait_view(fd,term,lambda text:'ECHO:from-other-controller' in text)
@@ -156,11 +156,11 @@ def test_cli_and_tui(h):
         wait_view(fd,term,lambda text:term.alternate and 'mode-ui' in text and 'Memory' in text)
         # Takeover requires a second, explicit confirmation.
         os.write(fd,b'c');wait_view(fd,term,lambda text:'Connection modes' in text)
-        os.write(fd,b'\x1b[A\r');wait_view(fd,term,lambda text:'y confirm' in text)
+        os.write(fd,b'\x1b[B\r');wait_view(fd,term,lambda text:'y confirm' in text)
         os.write(fd,b'\x1b');wait_view(fd,term,lambda text:'Memory' in text and 'y confirm' not in text)
         frame(owner,3,b'cancel-preserves-owner\n');output(owner,b'ECHO:cancel-preserves-owner\n')
         os.write(fd,b'c');wait_view(fd,term,lambda text:'Connection modes' in text)
-        os.write(fd,b'\x1b[A\r');wait_view(fd,term,lambda text:'y confirm' in text)
+        os.write(fd,b'\x1b[B\r');wait_view(fd,term,lambda text:'y confirm' in text)
         os.write(fd,b'y');wait_view(fd,term,lambda text:'Take over' in text and 'Connection modes' not in text)
         assert json.loads(read_until(owner,8))['code']=='taken_over'
         os.write(fd,b'from-new-owner\n');wait_view(fd,term,lambda text:'ECHO:from-new-owner' in text)
@@ -170,7 +170,7 @@ def test_cli_and_tui(h):
         wait_view(fd,term,lambda text:'taken over in another terminal' in text and 'Memory' in text)
         os.write(other,b'\x02d');drain(other);assert h.join(replacement)==0
         os.write(fd,b'q');drain(fd);assert h.join(pid)==0
-        print('PASS CLI read-only filters real keyboard, TUI busy choices/default read-only, shared input, confirmed/cancelled takeover, displaced TUI returns to list',flush=True)
+        print('PASS CLI read-only filters real keyboard, TUI explicit choices/default shared, shared input, confirmed/cancelled takeover, displaced TUI returns to list',flush=True)
     finally:owner.close();h.cli('stop',ref)
 
 
@@ -205,14 +205,14 @@ def test_languages(h):
         wait_view(fd,term,lambda text:'mode-languages' in text)
         os.write(fd,b'c')
         wait_view(fd,term,lambda text:all(label in text for label in [title,readonly,shared,takeover]))
-        row=next(i for i,line in enumerate(term.display) if readonly in line)
-        column=term.display[row].index(readonly)
-        assert term.current.buffer[row][column].reverse,'read-only must be the safe default'
-        os.write(fd,b'\x1b[A\r');wait_view(fd,term,lambda text:hint in text)
+        row=next(i for i,line in enumerate(term.display) if shared in line)
+        column=term.display[row].index(shared)
+        assert term.current.buffer[row][column].reverse,'shared control must be the default'
+        os.write(fd,b'\x1b[B\r');wait_view(fd,term,lambda text:hint in text)
         os.write(fd,b'\x1b');wait_view(fd,term,lambda text:title not in text and hint not in text and 'mode-languages' in text)
         os.write(fd,b'q');drain(fd);assert h.join(pid)==0
     h.cli('settings','set','language','en');h.cli('stop',ref)
-    print('PASS localized connection menus, safe default and takeover confirmation in five languages',flush=True)
+    print('PASS localized connection menus, shared default and takeover confirmation in five languages',flush=True)
 
 
 def test_old_broker(binary,old_binary):

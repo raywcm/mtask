@@ -35,6 +35,8 @@ type EscapeDecoder struct {
 	Command func([]byte, uint16) bool
 	// Ignore drops reserved keys without ending the current input route.
 	Ignore func([]byte, uint16) bool
+	// Transform changes application keys after manager commands, outside paste.
+	Transform func([]byte) []byte
 	// Remaining contains bytes after a handled command, for pane switching.
 	Remaining []byte
 	pending   uint16
@@ -145,6 +147,9 @@ func (d *EscapeDecoder) consume(raw []byte, key uint16) ([]byte, bool) {
 		d.pending = key
 		d.prefix = append([]byte(nil), raw...)
 		return nil, false
+	}
+	if !d.pasting && d.Transform != nil {
+		return d.Transform(raw), false
 	}
 	return raw, false
 }

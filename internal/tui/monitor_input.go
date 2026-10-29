@@ -68,7 +68,7 @@ func (r *monitorInput) resetLocked() {
 		}
 		r.commands = append(r.commands, command)
 		return true
-	}, Ignore: monitorIgnoredKey}
+	}, Ignore: monitorIgnoredKey, Transform: monitorApplicationKey}
 	r.commands = nil
 }
 func (r *monitorInput) Arm(armed bool) { r.mu.Lock(); r.armed = armed; r.mu.Unlock() }
@@ -252,6 +252,9 @@ func monitorNavigation(raw []byte) string {
 		return ""
 	}
 	if key, ok := event.(uv.KeyPressEvent); ok {
+		if key.Mod & ^(uv.ModCapsLock|uv.ModNumLock) != 0 {
+			return ""
+		}
 		switch key.Code {
 		case uv.KeyUp:
 			return "previous"
@@ -262,6 +265,39 @@ func monitorNavigation(raw []byte) string {
 		}
 	}
 	return ""
+}
+
+func monitorApplicationKey(raw []byte) []byte {
+	if len(raw) < 2 || raw[0] != 0x1b {
+		return raw
+	}
+	var decoder uv.EventDecoder
+	n, event := decoder.Decode(raw)
+	if n != len(raw) {
+		return raw
+	}
+	var key uv.Key
+	switch e := event.(type) {
+	case uv.KeyPressEvent:
+		key = uv.Key(e)
+	case uv.KeyReleaseEvent:
+		key = uv.Key(e)
+		if key.Mod & ^(uv.ModCapsLock|uv.ModNumLock) == uv.ModCtrl && (key.Code == uv.KeyUp || key.Code == uv.KeyDown) {
+			return nil
+		}
+		return raw
+	default:
+		return raw
+	}
+	if key.Mod & ^(uv.ModCapsLock|uv.ModNumLock) == uv.ModCtrl {
+		if key.Code == uv.KeyUp {
+			return []byte("\x1b[A")
+		}
+		if key.Code == uv.KeyDown {
+			return []byte("\x1b[B")
+		}
+	}
+	return raw
 }
 
 func monitorIgnoredKey(raw []byte, key uint16) bool {
@@ -281,6 +317,12 @@ func monitorIgnoredKey(raw []byte, key uint16) bool {
 // Preserve key events that were decoded just before v enabled the raw route.
 func prefetchedMonitorKey(msg tea.KeyPressMsg) []byte {
 	k := msg.Key()
+	if k.Mod == tea.ModCtrl && (k.Code == tea.KeyUp || k.Code == tea.KeyDown) {
+		if k.Code == tea.KeyUp {
+			return []byte("\x1b[1;5A")
+		}
+		return []byte("\x1b[1;5B")
+	}
 	if k.Code == tea.KeyEnter && k.Mod == tea.ModCtrl {
 		return []byte("\x1b[13;5u")
 	}

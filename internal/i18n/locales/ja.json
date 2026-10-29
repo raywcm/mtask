@@ -61,7 +61,7 @@
     "history_empty": "保存された出力はありません。",
     "history_hint": "↑/↓ スクロール · PgUp/PgDn ページ · ←/→ 横移動 · Home/End · Esc/q 戻る",
     "monitor": "モニター",
-    "monitor_hint": "↑↓ 切替 · Esc/F12 一覧 · Ctrl+F 検索",
+    "monitor_hint": "↑↓ 切替 · Ctrl+↑↓ アプリ矢印 · Esc/F12 一覧 · Ctrl+F 検索",
     "monitor_select": "セッションを選択",
     "monitor_unavailable": "監視できません",
     "monitor_busy": "別の端末がこのセッションを使用中です。",
@@ -126,7 +126,8 @@
     "search_sessions": "セッション検索",
     "search_empty": "一致するセッションはありません",
     "search_hint": "入力して検索 · ↑↓/PgUp/PgDn 選択 · Enter 決定 · Esc 戻る",
-    "sessions": "セッション"
+    "sessions": "セッション",
+    "move_session": "セッションを移動"
   },
   "cli": {
     "disconnect existing controllers and take control": "既存の操作接続を切断して引き継ぐ",

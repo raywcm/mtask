@@ -106,12 +106,14 @@ def test_monitor(h,frontend):
         wait_view(fd,terminal,lambda text:'SIZE:23,85' in text)
         assert latest_size(h,alpha)==(23,85)
         os.write(fd,b'\x02\x1b[B')
-        wait_view(fd,terminal,lambda text:'Unable to monitor' in text and 'in use by another terminal' in text)
+        wait_view(fd,terminal,lambda text:'STATIC-beta' in text and 'Control' in text)
+        assert latest_size(h,beta)==(24,80), 'joining must not resize the existing controller'
         until(lambda:latest_size(h,alpha)==(23,85))
         frame(owner,9);kind,_=receive(owner)
         while kind!=10:kind,_=receive(owner)
         assert h.show(beta)['health']=='online'
         owner.close()
+        until(lambda:latest_size(h,beta)==(23,85))
         os.write(fd,b'\x1b[15~')
         wait_view(fd,terminal,lambda text:'STATIC-beta' in text and 'Unable to monitor' not in text)
         os.write(fd,b'\x1b[24~')
@@ -141,7 +143,7 @@ def test_monitor(h,frontend):
         assert all(tuple(map(int,size))==(23,85) for size in updates),updates
         os.write(fd,b'q');drain(fd);assert h.join(pid)==0
         for ref in [alpha,beta]:assert identity(h,ref)==before[ref]
-        print('PASS v split monitor/static cells/live refresh, direct keyboard input, pane resize, switch/size retention, occupied-session failure/retry, list Enter attach/detach returns to list, stable task PIDs',flush=True)
+        print('PASS v split monitor/static cells/live refresh, direct keyboard input, pane resize, switch/size retention, occupied-session shared join/promotion, list Enter attach/detach returns to list, stable task PIDs',flush=True)
     finally:owner.close()
 
 

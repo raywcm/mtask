@@ -27,6 +27,18 @@ type fakeBackend struct {
 	loggedRaw        bool
 }
 
+func (f *fakeBackend) Move(_ context.Context, id task.ID, direction int) error {
+	for i, r := range f.records {
+		if r.Spec.ID == id {
+			next := i + direction
+			if next >= 0 && next < len(f.records) {
+				f.records[i], f.records[next] = f.records[next], f.records[i]
+			}
+			break
+		}
+	}
+	return nil
+}
 func (f *fakeBackend) List(context.Context) ([]task.Record, error) { return f.records, nil }
 func (f *fakeBackend) Settings() (config.Settings, error)          { return f.settings, nil }
 func (f *fakeBackend) SaveSettings(_ context.Context, s config.Settings) error {
@@ -457,7 +469,7 @@ func TestSingleLineHelpAndAllLanguages(t *testing.T) {
 			}
 		}
 		full := ansi.Strip(m.helpLine(500))
-		for _, key := range []string{"←→", "↑↓", "Enter", "n", "F12/Ctrl+B,d", "?", "q"} {
+		for _, key := range []string{"←→", "↑↓", "Enter", "v", "n", "Ctrl+F", "?", "q"} {
 			if !strings.Contains(full, key) {
 				t.Fatalf("%s help lost %s", option.Code, key)
 			}
@@ -518,24 +530,24 @@ func TestConnectionChoicesAndTakeoverConfirmation(t *testing.T) {
 	m := readyModel(t)
 	original := m.tasks[0]
 	m, cmd := press(m, 'c')
-	if cmd != nil || m.mode != "connect" || m.connectChoice != 1 {
-		t.Fatal("connection menu must default to read only")
+	if cmd != nil || m.mode != "connect" || m.connectChoice != 2 {
+		t.Fatal("connection menu must default to shared control")
 	}
 	m, cmd = press(m, tea.KeyEnter)
-	if cmd == nil || m.selected.Mode != "readonly" || m.selected.ID != original.Spec.ID {
-		t.Fatal("read-only choice did not attach the selected full ID")
+	if cmd == nil || m.selected.Mode != "shared" || m.selected.ID != original.Spec.ID {
+		t.Fatal("shared choice did not attach the selected full ID")
 	}
 	m = readyModel(t)
 	m, _ = press(m, 'c')
-	m, _ = press(m, tea.KeyDown)
+	m, _ = press(m, tea.KeyUp)
 	m, cmd = press(m, tea.KeyEnter)
-	if cmd == nil || m.selected.Mode != "shared" {
-		t.Fatal("shared connection choice missing")
+	if cmd == nil || m.selected.Mode != "readonly" {
+		t.Fatal("read-only connection choice missing")
 	}
 	for _, cancel := range []rune{tea.KeyEscape, tea.KeyEnter, 'n'} {
 		m = readyModel(t)
 		m, _ = press(m, 'c')
-		m, _ = press(m, tea.KeyUp)
+		m, _ = press(m, tea.KeyDown)
 		m, cmd = press(m, tea.KeyEnter)
 		noAction(t, cmd)
 		if m.mode != "takeover" {
@@ -550,7 +562,7 @@ func TestConnectionChoicesAndTakeoverConfirmation(t *testing.T) {
 	m = readyModel(t)
 	original = m.tasks[0]
 	m, _ = press(m, 'c')
-	m, _ = press(m, tea.KeyUp)
+	m, _ = press(m, tea.KeyDown)
 	m, _ = press(m, tea.KeyEnter)
 	next, _ := m.Update(loaded{tasks: []task.Record{m.tasks[1]}, generation: m.generation})
 	m = next.(model)
@@ -564,7 +576,7 @@ func TestBusyConnectionOpensSafeLocalizedMenu(t *testing.T) {
 	base := readyModel(t)
 	spec := base.tasks[0].Spec
 	m := newModel(context.Background(), base.catalog, fmt.Errorf("busy"), Options{Conflict: &spec})
-	if m.mode != "connect" || m.target != spec.ID || m.connectChoice != 1 || m.err != nil {
+	if m.mode != "connect" || m.target != spec.ID || m.connectChoice != 2 || m.err != nil {
 		t.Fatal("busy connection did not open safe choices")
 	}
 	view := ansi.Strip(m.View().Content)
@@ -789,5 +801,54 @@ func TestMonitorHorizontalKeysDoNothing(t *testing.T) {
 	m, _ = press(m, tea.KeyRight)
 	if m.mode != "stop" || m.confirmChoice != 1 {
 		t.Fatal("monitor suppression broke confirmation buttons")
+	}
+}
+
+func TestContextHintsStayInTitleRow(t *testing.T) {
+	for _, language := range config.LanguageCodes() {
+		for _, width := range []int{44, 80, 160} {
+			for _, mode := range []string{"", "search", "history", "connect", "settings", "monitor"} {
+				m := readyModel(t)
+				m.settings.Language = language
+				m.width = width
+				m.mode = mode
+				key := "Esc"
+				switch mode {
+				case "":
+					key = "v"
+				case "monitor":
+					m.mode = ""
+					m.monitoring = true
+					key = "Ctrl+"
+				case "settings":
+					m.tab = tabSettings
+					m.draft = m.settings
+				case "history":
+					key = "↑"
+				}
+				first := strings.Split(ansi.Strip(m.View().Content), "\n")[0]
+				if !strings.Contains(first, "TaskDock") || !strings.Contains(first, key) || ansi.StringWidth(first) > width {
+					t.Fatalf("%s width %d mode %s lost title hint: %q", language, width, mode, first)
+				}
+			}
+		}
+	}
+}
+
+func TestShiftMoveKeepsSelectedID(t *testing.T) {
+	m := readyModel(t)
+	selected := m.tasks[0].Spec.ID
+	next, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyDown, Mod: tea.ModShift})
+	m = next.(model)
+	if cmd == nil || !m.busy {
+		t.Fatal("Shift+Down did not schedule a move")
+	}
+	next, cmd = m.Update(cmd())
+	m = next.(model)
+	next, _ = m.Update(cmd())
+	m = next.(model)
+	current, ok := m.current()
+	if !ok || current.Spec.ID != selected || m.cursors[0] != 1 {
+		t.Fatal("moved selection lost its ID")
 	}
 }

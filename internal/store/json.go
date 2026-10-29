@@ -154,7 +154,7 @@ func (s *JSON) List(ctx context.Context) ([]task.Record, error) {
 		}
 		return records[i].Spec.CreatedAt.Before(records[j].Spec.CreatedAt)
 	})
-	return records, nil
+	return records, s.applyOrder(records)
 }
 
 // SaveRuntime must only be called by the broker that owns the task. Enforcing

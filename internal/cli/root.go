@@ -23,7 +23,7 @@ import (
 	"golang.org/x/term"
 )
 
-var Version = "0.6.0-dev"
+var Version = "0.7.0-dev"
 
 type ExitError struct{ Code int }
 
@@ -256,7 +256,7 @@ func NewRoot() *cobra.Command {
 		if !ok {
 			return errors.New("attach requires a terminal")
 		}
-		mode := protocol.AttachExclusive
+		mode := "" // Negotiate shared control, with exclusive fallback for old brokers.
 		if takeover {
 			mode = protocol.AttachTakeover
 		} else if readOnly {

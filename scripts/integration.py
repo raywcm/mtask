@@ -230,15 +230,17 @@ def test_attach(h):
     pid, fd = h.spawn_tty('attach', task)
     initial_state = termios.tcgetattr(fd)
     initial = drain(fd)
-    label = ('TaskDock · attach ['+task[:8]+']').encode()
+    label = ('TaskDock · attach ['+task[:8]+'] · Shared control').encode()
     assert b'\x1b[22;2t\x1b]2;'+label+b'\x07' in initial, initial
     assert b'\r\n'+label in initial, initial
     os.write(fd, b'first\n')
     assert b'ECHO:first' in drain(fd)
     pid2, fd2 = h.spawn_tty('attach', task)
-    busy = wait_output(fd2, b'busy')
-    assert b'busy' in busy and b'\x1b]2;TaskDock' not in busy, busy
-    assert h.join(pid2) == 1
+    wait_output(fd2, b'Shared control')
+    os.write(fd2, b'from-second\n')
+    wait_output(fd, b'ECHO:from-second')
+    os.write(fd2, b'\x1b[24~'); drain(fd2)
+    assert h.join(pid2) == 0
     os.write(fd, b'\x02d')
     end = drain(fd)
     assert b'\x1b[?1049l' in end and b'\x1b[?25h' in end
@@ -251,7 +253,7 @@ def test_attach(h):
     h.cli('rename', task, '代码会话')
     pid, fd = h.spawn_tty('attach', task)
     renamed = drain(fd)
-    label = ('TaskDock · 代码会话 ['+task[:8]+']').encode()
+    label = ('TaskDock · 代码会话 ['+task[:8]+'] · Shared control').encode()
     assert b'\x1b]2;'+label+b'\x07' in renamed and b'\r\n'+label in renamed, renamed
     os.write(fd, '中文\n'.encode())
     assert 'ECHO:中文'.encode() in drain(fd)
@@ -265,7 +267,7 @@ def test_attach(h):
     drain(fd, .3)
     assert h.join(pid) == 7
     assert h.finished(task)['runtime']['exit_code'] == 7
-    print('PASS real tty session name/short ID/title cleanup/rename, attach/detach/kill/reattach, busy, Unicode, termios and exit 7', flush=True)
+    print('PASS real tty session name/short ID/title cleanup/rename, attach/detach/kill/reattach, default shared control, Unicode, termios and exit 7', flush=True)
 
 
 def test_protocol_and_transparency(h):
@@ -424,7 +426,7 @@ def test_tui(h):
             created=ui.show('tui-created')['spec']['id']
             os.write(fd,b'printf "TUI-OK\\n"\r')
             assert b'TUI-OK' in drain(fd,.3)
-            os.write(fd,b'\x02d');wait_output(fd,b'F12/Ctrl+B,d')
+            os.write(fd,b'\x02d');wait_output(fd,b'TaskDock')
             os.write(fd,b'\x1bOQ');drain(fd)
             os.write(fd,b'\x01\x0btui-renamed\r');drain(fd,.3)
             until(lambda:ui.show(created)['spec']['name']=='tui-renamed')

@@ -39,7 +39,7 @@ def main():
             assert 'TaskDock' in text and version not in text
             assert live[:8] in text and live not in text
             assert 'completed-work' not in text
-            shortcut_rows=[row for row in terminal.display if all(key in row for key in ('TaskDock','Enter','F12/Ctrl+B,d','?','q'))]
+            shortcut_rows=[row for row in terminal.display if all(key in row for key in ('TaskDock','Enter','v','?','q'))]
             assert len(shortcut_rows)==1 and shortcut_rows[0]==terminal.display[0], 'shortcuts must share the brand row'
             selected=next(i for i,row in enumerate(terminal.display) if 'live-work' in row)
             row=terminal.display[selected].strip()

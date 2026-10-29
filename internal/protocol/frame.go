@@ -115,6 +115,7 @@ func writeAll(w io.Writer, p []byte) error {
 
 // Control payloads are UTF-8 JSON. Input and Output payloads are opaque bytes.
 type HelloMessage struct {
+	Preview      bool       `json:"preview,omitempty"`
 	TaskID       task.ID    `json:"task_id"`
 	InstanceID   task.ID    `json:"instance_id"`
 	Mode         string     `json:"mode"` // "attach" or "control"
@@ -146,8 +147,9 @@ func ValidAttachMode(mode string) bool {
 }
 
 type NoticeMessage struct {
-	Type      string `json:"type"` // "role" or "refresh"
-	SizeOwner bool   `json:"size_owner,omitempty"`
+	Type      string     `json:"type"` // "role" or "refresh"
+	SizeOwner bool       `json:"size_owner,omitempty"`
+	Size      *task.Size `json:"size,omitempty"`
 }
 
 type ErrorMessage struct {
